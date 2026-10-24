@@ -125,7 +125,8 @@ async function main() {
   if (verify) {
     await run(process.execPath, ['scripts/smoke-m1.mjs'], api);
     await run(process.execPath, ['scripts/smoke-m23.mjs'], api);
-    console.log('M1–M3 verification completed. No real money or provider connections.');
+    await run(process.execPath, ['scripts/smoke-m4.mjs'], api);
+    console.log('M1–M4 verification completed. No real money or provider connections.');
     stop(0);
     return;
   }

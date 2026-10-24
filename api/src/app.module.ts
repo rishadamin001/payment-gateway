@@ -1,3 +1,4 @@
+import {MerchantModule} from './merchant/merchant.module.js';
 import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { AppController } from './app.controller.js';
@@ -8,7 +9,7 @@ import { ShopModule } from './shop/shop.module.js';
 import { HttpErrorFilter } from './http-error.filter.js';
 
 @Module({
-  imports: [PaymentsModule, CheckoutModule, ShopModule],
+  imports: [MerchantModule, PaymentsModule, CheckoutModule, ShopModule],
   controllers: [AppController],
   providers: [AppService, { provide: APP_FILTER, useClass: HttpErrorFilter }],
 })

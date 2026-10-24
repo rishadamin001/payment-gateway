@@ -165,7 +165,7 @@ export default function Dashboard() {
     <aside className="sidebar">
       <Link href="/" className="brand-link" aria-label="PayBD Demo home"><Brand /></Link>
       <div className="workspace-label">MERCHANT WORKSPACE</div>
-      <nav aria-label="Main navigation"><Link href="/" className="nav-item active"><Icon name="grid" />Overview<span className="nav-active-dot" /></Link><a href="#payments" className="nav-item"><Icon name="payments" />Payments</a><Link href="/shop" className="nav-item"><Icon name="bank" />Demo shop</Link><Link href="/guide" className="nav-item"><Icon name="code" />API guide<Icon name="external" size={13} /></Link></nav>
+      <nav aria-label="Main navigation"><Link href="/merchant" className="nav-item">Merchant sign in</Link><Link href="/" className="nav-item active"><Icon name="grid" />Overview<span className="nav-active-dot" /></Link><a href="#payments" className="nav-item"><Icon name="payments" />Payments</a><Link href="/shop" className="nav-item"><Icon name="bank" />Demo shop</Link><Link href="/guide" className="nav-item"><Icon name="code" />API guide<Icon name="external" size={13} /></Link></nav>
       <div className="sidebar-bottom"><div className="sandbox-card"><span className="sandbox-orb"><Icon name="shield" size={22} /></span><strong>A safe place to explore.</strong><p>Test the journey.<br />Leave real money out of it.</p><Link href="/guide">Explore the demo <Icon name="arrow" size={16} /></Link></div><div className="course-label"><span className="course-icon">M1</span><div><strong>MIS465 project</strong><span>Payments core</span></div></div></div>
     </aside>
     <div className="workspace-main">

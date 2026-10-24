@@ -29,3 +29,12 @@ npm run verify
 ```
 
 Normal demo startup does not need a test database. Tests add isolated fictional fixtures without dropping databases. If startup fails: check PostgreSQL is running, the URL names an existing database, and ports **3000/3001** are free. The launcher will not stop unrelated services or erase data. No real provider credentials are needed.
+
+## M4 merchant dashboard
+
+Open **localhost:3001/merchant**, choose **Create an account**, and use a fictional email
+and a new demo-only password of at least 12 characters. No preset password is needed.
+Click **Create demo payment**, finish the simulated checkout, then return to Merchant
+Dashboard to filter transactions, export CSV, inspect charts, or open a payment timeline.
+The API keys panel creates/revokes test keys; live mode is disabled. Test keys are shown
+once in a masked field for copying. Never send passwords or keys to chat or source files.
