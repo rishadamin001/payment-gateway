@@ -1,0 +1,144 @@
+-- PayBD Demo / MIS465 -- M1 payments core
+-- DEMO MODE: no real money. Run only after 001_merchants_baseline.sql.
+-- Safe to rerun during development. No destructive data migration.
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS public.merchant_api_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  merchant_id UUID NOT NULL REFERENCES public.merchants(id) ON DELETE RESTRICT,
+  name TEXT NOT NULL,
+  mode TEXT NOT NULL DEFAULT 'TEST' CHECK (mode = 'TEST'),
+  key_prefix TEXT NOT NULL,
+  key_hash CHAR(64) NOT NULL UNIQUE CHECK (key_hash ~ '^[a-f0-9]{64}$'),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  revoked_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_merchant_api_keys_merchant_id
+  ON public.merchant_api_keys (merchant_id);
+
+CREATE TABLE IF NOT EXISTS public.payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  merchant_id UUID NOT NULL REFERENCES public.merchants(id) ON DELETE RESTRICT,
+  merchant_order_id VARCHAR(100) NOT NULL CHECK (length(trim(merchant_order_id)) > 0),
+  amount_paisa BIGINT NOT NULL CHECK (amount_paisa BETWEEN 1 AND 100000000000),
+  currency VARCHAR(3) NOT NULL DEFAULT 'BDT' CHECK (currency = 'BDT'),
+  status TEXT NOT NULL DEFAULT 'PENDING'
+    CHECK (status IN ('PENDING','PAID','FAILED','CANCELLED','EXPIRED','REFUNDED','PARTIALLY_REFUNDED')),
+  success_url TEXT NOT NULL,
+  cancel_url TEXT NOT NULL,
+  idempotency_key VARCHAR(128) NOT NULL,
+  request_fingerprint CHAR(64) NOT NULL CHECK (request_fingerprint ~ '^[a-f0-9]{64}$'),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '30 minutes'),
+  CONSTRAINT payments_unique_idempotency UNIQUE (merchant_id, idempotency_key),
+  CONSTRAINT payments_valid_idempotency CHECK (idempotency_key ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$'),
+  CONSTRAINT payments_valid_expiry CHECK (expires_at > created_at)
+);
+CREATE INDEX IF NOT EXISTS idx_payments_merchant_created
+  ON public.payments (merchant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payments_merchant_order
+  ON public.payments (merchant_id, merchant_order_id);
+CREATE INDEX IF NOT EXISTS idx_payments_status_created
+  ON public.payments (status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.payment_status_history (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  payment_id UUID NOT NULL REFERENCES public.payments(id) ON DELETE RESTRICT,
+  from_status TEXT,
+  to_status TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT history_allowed_from CHECK (from_status IS NULL OR
+    from_status IN ('PENDING','PAID','FAILED','CANCELLED','EXPIRED','REFUNDED','PARTIALLY_REFUNDED')),
+  CONSTRAINT history_allowed_to CHECK (to_status IN
+    ('PENDING','PAID','FAILED','CANCELLED','EXPIRED','REFUNDED','PARTIALLY_REFUNDED'))
+);
+CREATE INDEX IF NOT EXISTS idx_payment_history_payment_id
+  ON public.payment_status_history (payment_id, id);
+
+-- The DB enforces payment-workflow.md, including updates made outside the API.
+CREATE OR REPLACE FUNCTION public.paybd_guard_payment_update()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status <> 'PENDING' THEN
+      RAISE EXCEPTION 'Payments must start PENDING' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF ROW(NEW.id, NEW.merchant_id, NEW.merchant_order_id, NEW.amount_paisa,
+         NEW.currency, NEW.success_url, NEW.cancel_url, NEW.idempotency_key,
+         NEW.request_fingerprint, NEW.created_at, NEW.expires_at)
+     IS DISTINCT FROM
+     ROW(OLD.id, OLD.merchant_id, OLD.merchant_order_id, OLD.amount_paisa,
+         OLD.currency, OLD.success_url, OLD.cancel_url, OLD.idempotency_key,
+         OLD.request_fingerprint, OLD.created_at, OLD.expires_at) THEN
+    RAISE EXCEPTION 'Payment identity/details are immutable' USING ERRCODE = '23514';
+  END IF;
+
+  IF NEW.status IS DISTINCT FROM OLD.status AND NOT (
+      (OLD.status = 'PENDING' AND NEW.status IN ('PAID','FAILED','CANCELLED','EXPIRED'))
+      OR (OLD.status = 'PAID' AND NEW.status IN ('PARTIALLY_REFUNDED','REFUNDED'))
+      OR (OLD.status = 'PARTIALLY_REFUNDED' AND NEW.status = 'REFUNDED')
+  ) THEN
+    RAISE EXCEPTION 'Invalid payment transition: % -> %', OLD.status, NEW.status
+      USING ERRCODE = '23514';
+  END IF;
+
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.paybd_record_payment_history()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO public.payment_status_history (payment_id, from_status, to_status, reason, changed_at)
+    VALUES (NEW.id, NULL, NEW.status, 'Payment created', NEW.created_at);
+  ELSE
+    INSERT INTO public.payment_status_history (payment_id, from_status, to_status, reason)
+    VALUES (NEW.id, OLD.status, NEW.status, 'Simulated state transition');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- Audit history is generated by the payment trigger and is append-only.
+-- Like all database constraints, this assumes a role that cannot disable triggers.
+CREATE OR REPLACE FUNCTION public.paybd_guard_payment_history()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'INSERT' AND pg_trigger_depth() = 2 THEN
+    RETURN NEW;
+  END IF;
+  RAISE EXCEPTION 'Payment history is append-only and managed by payment transitions'
+    USING ERRCODE = '23514';
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER paybd_payment_guard
+  BEFORE INSERT OR UPDATE ON public.payments
+  FOR EACH ROW EXECUTE FUNCTION public.paybd_guard_payment_update();
+
+CREATE OR REPLACE TRIGGER paybd_payment_history_insert
+  AFTER INSERT ON public.payments
+  FOR EACH ROW EXECUTE FUNCTION public.paybd_record_payment_history();
+
+CREATE OR REPLACE TRIGGER paybd_payment_history_update
+  AFTER UPDATE OF status ON public.payments
+  FOR EACH ROW WHEN (OLD.status IS DISTINCT FROM NEW.status)
+  EXECUTE FUNCTION public.paybd_record_payment_history();
+
+CREATE OR REPLACE TRIGGER paybd_history_guard
+  BEFORE INSERT OR UPDATE OR DELETE ON public.payment_status_history
+  FOR EACH ROW EXECUTE FUNCTION public.paybd_guard_payment_history();
+
+CREATE OR REPLACE TRIGGER paybd_history_truncate_guard
+  BEFORE TRUNCATE ON public.payment_status_history
+  FOR EACH STATEMENT EXECUTE FUNCTION public.paybd_guard_payment_history();
+
+COMMIT;

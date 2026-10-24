@@ -1,0 +1,14 @@
+{
+  "name": "paybd-demo",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24 <25" },
+  "scripts": {
+    "setup": "npm --prefix api ci && npm --prefix web ci",
+    "build": "npm --prefix api run build && npm --prefix web run build",
+    "test": "npm --prefix api test",
+    "verify": "node scripts/dev.mjs --verify",
+    "demo": "node scripts/dev.mjs",
+    "demo:production": "node scripts/dev.mjs --production"
+  }
+}
