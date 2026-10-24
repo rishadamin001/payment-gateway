@@ -1,0 +1,30 @@
+import {chromium} from 'playwright-core';
+import {randomBytes,randomUUID} from 'node:crypto';
+import assert from 'node:assert/strict';
+const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH??'/usr/bin/chromium',args:['--no-sandbox']});
+const page=await browser.newPage({viewport:{width:1400,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+try{
+ await page.goto('http://localhost:3001/merchant');
+ await page.getByRole('button',{name:'Create an account',exact:true}).click();
+ await page.getByLabel('Business name',{exact:true}).fill('Browser M4 store');
+ const email=`browser-${randomUUID()}@example.test`,password=randomBytes(20).toString('hex');
+ await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('Password',{exact:true}).fill(password);
+ await page.getByRole('button',{name:'Sign up',exact:true}).click();
+ await page.getByRole('heading',{name:'Browser M4 store',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Create demo payment',exact:true}).click();
+ await page.waitForURL('**/checkout/**');const id=page.url().split('/').at(-1);
+ await page.getByRole('button',{name:'Continue with Demo card',exact:true}).click();
+ await page.getByLabel('Practice OTP',{exact:true}).fill('000000');await page.getByRole('button',{name:'Confirm simulated payment',exact:true}).click();
+ await page.getByRole('heading',{name:'Payment successful',exact:true}).waitFor();
+ await page.goto('http://localhost:3001/merchant');
+ await page.getByRole('img',{name:'Revenue chart',exact:true}).waitFor();
+ await page.getByLabel('Search',{exact:true}).fill(id);await page.getByRole('button',{name:'Apply filters',exact:true}).click();
+ await page.locator('tbody tr').first().waitFor();
+ const csv=await page.request.get('http://localhost:3001/api/merchant/payments/export');assert.equal(csv.status(),200);assert.match(await csv.text(),new RegExp(id));
+ await page.goto(`http://localhost:3001/merchant/payments/${id}`);await page.getByRole('heading',{name:'State timeline',exact:true}).waitFor();assert.equal(await page.locator('.merchant-timeline li').count(),2);
+ await page.goto('http://localhost:3001/merchant');await page.getByRole('button',{name:'Generate test key',exact:true}).click();await page.getByRole('button',{name:'Dismiss',exact:true}).click();await page.getByRole('button',{name:'Revoke',exact:true}).click();
+ await page.getByRole('button',{name:'Sign out',exact:true}).click();await page.getByRole('heading',{name:'Merchant sign in',exact:true}).waitFor();
+ await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.getByRole('heading',{name:'Browser M4 store',exact:true}).waitFor();
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);
+ console.log('PASS M4 browser signup/login/logout, checkout, charts, filters, CSV, timeline, key create/revoke and mobile width.');
+}finally{await browser.close();}

@@ -1,0 +1,15 @@
+.env
+.env.*
+*.pem
+*.key
+node_modules/
+dist/
+.next/
+*.tsbuildinfo
+coverage/
+test-results/
+playwright-report/
+*.log
+.DS_Store
+
+.npm-cache/
