@@ -18,6 +18,7 @@ const environment = {
   PAYBD_API_BASE_URL: 'http://127.0.0.1:3000',
   PAYBD_API_URL: 'http://127.0.0.1:3000',
   NEXT_TELEMETRY_DISABLED: '1',
+  PAYBD_WEBHOOK_WORKER: '1',
 };
 const dockerEnvironment = { ...process.env };
 for (const key of ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_TLS', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) delete dockerEnvironment[key];
@@ -113,8 +114,8 @@ async function main() {
   await run(npm, ['run', 'build'], api);
   if (verify) {
     if (!environment.TEST_DATABASE_URL) throw new Error('TEST_DATABASE_URL must identify a separate test database for verification.');
-    await run(npm, ['test'], api);
-    await run(npm, ['run', 'test:e2e'], api);
+    await run(npm, ['test'], api, {...environment,PAYBD_WEBHOOK_WORKER:'0'});
+    await run(npm, ['run', 'test:e2e'], api, {...environment,PAYBD_WEBHOOK_WORKER:'0'});
     await run(npm, ['run', 'lint'], web);
     await run(npm, ['run', 'build'], web);
   } else if (production) {
@@ -126,7 +127,8 @@ async function main() {
     await run(process.execPath, ['scripts/smoke-m1.mjs'], api);
     await run(process.execPath, ['scripts/smoke-m23.mjs'], api);
     await run(process.execPath, ['scripts/smoke-m4.mjs'], api);
-    console.log('M1–M4 verification completed. No real money or provider connections.');
+    await run(process.execPath, ['scripts/smoke-m5.mjs'], api);
+    console.log('M1–M5 verification completed. No real money or provider connections.');
     stop(0);
     return;
   }

@@ -5,12 +5,12 @@
 ## Exactly what to run
 
 1. Install **Node.js 24** and make sure your existing **PostgreSQL** service is running. Keep your existing `payment_gateway` database. You do **not** need Docker.
-2. Extract this ZIP into a **new folder** (not over your existing project). Open the extracted `PayBD_M2_M3` folder.
+2. Extract this ZIP into a **new folder** (not over your existing project). Open the extracted `PayBD_M1_M5` folder.
 3. **Double-click `start-demo.bat`.** It uses `DATABASE_URL` if already set in its environment. Otherwise a hidden prompt asks for it. Enter your PostgreSQL connection URL in this format, substituting your own username/password:
    `postgresql://USER:PASSWORD@localhost:5432/payment_gateway`
    The value is not displayed, saved to a file, or committed. URL-encode special characters in the password (for example `@` becomes `%40`). No `.env` file is needed or read.
 4. Wait for **“PayBD Demo ready”**. The launcher installs locked dependencies, applies additive migrations, seeds fictional examples, and starts both apps. The first start needs Internet access. Keep the terminal open.
-5. Your browser opens the shop. If it does not, enter **localhost:3001/shop** in your browser. The merchant dashboard is **localhost:3001**.
+5. Your browser opens the shop. If it does not, enter **localhost:3001/shop** in your browser. Your merchant dashboard is **localhost:3001/merchant**; **localhost:3001** shows the public fictional examples.
 
 Already have `DATABASE_URL` in a PowerShell environment? Run `./start-demo.bat` in that same window. It will not prompt again. Do not paste connection credentials into chat, source files or commands that are saved to shared logs.
 
@@ -38,3 +38,20 @@ Click **Create demo payment**, finish the simulated checkout, then return to Mer
 Dashboard to filter transactions, export CSV, inspect charts, or open a payment timeline.
 The API keys panel creates/revokes test keys; live mode is disabled. Test keys are shown
 once in a masked field for copying. Never send passwords or keys to chat or source files.
+
+## M5 refunds and signed webhooks
+
+In your merchant dashboard, click **Webhooks** → enable webhooks → choose **Fail twice,
+then accept** → **Save settings**. Return to the dashboard, click **Create demo payment**,
+and finish a successful simulated checkout. Open that payment from your transaction list.
+Under **Simulated refunds**, enter a smaller taka amount and a reason, then click
+**Confirm demo refund**. Leave the amount blank on a second refund to return the rest.
+The payment timeline shows **PAID → PARTIALLY_REFUNDED → REFUNDED**, with a separate
+refund history. Open **Webhooks** again to see signed deliveries retry and succeed.
+
+Webhooks use the built-in local receiver only. To demonstrate exhausted retries,
+choose **Always fail**, create another payment, and wait about 35 seconds. Then switch
+to **Accept every delivery** and click **Retry event**. No external service or money
+is involved. Older partially refunded examples without recorded amounts cannot be
+refunded again. Cloud builds, tests and browser checks are documented in
+`docs/M5_VERIFICATION.md`; native Windows verification remains for you to run.
