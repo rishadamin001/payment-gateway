@@ -54,7 +54,7 @@ function CreatePayment({ onClose, onCreated }: { onClose: () => void; onCreated:
       <p className="eyebrow">TEST REQUEST</p><h3>{result.amount_display}</h3><Status status={result.status} />
       <p>Your request has been saved. No money has moved.</p>
       <dl className="detail-list"><div><dt>Order reference</dt><dd>{result.merchant_order_id}</dd></div><div><dt>Payment ID</dt><dd className="mono break-all">{result.id}</dd></div></dl>
-      <Link className="button primary full-width" href={`/checkout/${result.id}`}>View checkout information <Icon name="arrow" size={17} /></Link>
+      <Link className="button primary full-width" href={`/checkout/${result.id}`}>Open demo checkout <Icon name="arrow" size={17} /></Link>
       <button className="button secondary full-width" onClick={onClose}>Back to payments</button>
     </div> : <form onSubmit={submit} className="create-form">
       <p className="modal-intro">Try the first step of a payment journey. This creates a pending request for your demo merchant.</p>
@@ -103,7 +103,7 @@ function PaymentDetails({ id, onClose }: { id: string; onClose: () => void }) {
       <h3 className="section-title">Payment history</h3>
       <ol className="timeline">{payment.history?.map((entry) => <li key={entry.id}><span className="timeline-dot" /><div><strong>{stateLabels[entry.to_status]}</strong><p>{entry.from_status ? `${stateLabels[entry.from_status]} → ${stateLabels[entry.to_status]}` : 'Payment request created'}</p></div><time dateTime={entry.changed_at}>{formatDate(entry.changed_at)}<br />{formatTime(entry.changed_at)} · Dhaka</time></li>)}</ol>
       <div className="notice-inline"><Icon name="shield" /><p>Every state change is recorded. All activity is simulated.</p></div>
-      <Link className="button secondary full-width" href={`/checkout/${payment.id}`}>View checkout information <Icon name="external" size={16} /></Link>
+      <Link className="button secondary full-width" href={`/checkout/${payment.id}`}>Open demo checkout <Icon name="external" size={16} /></Link>
     </div>}
   </Modal>;
 }
@@ -165,7 +165,7 @@ export default function Dashboard() {
     <aside className="sidebar">
       <Link href="/" className="brand-link" aria-label="PayBD Demo home"><Brand /></Link>
       <div className="workspace-label">MERCHANT WORKSPACE</div>
-      <nav aria-label="Main navigation"><Link href="/" className="nav-item active"><Icon name="grid" />Overview<span className="nav-active-dot" /></Link><a href="#payments" className="nav-item"><Icon name="payments" />Payments</a><Link href="/guide" className="nav-item"><Icon name="code" />API guide<Icon name="external" size={13} /></Link></nav>
+      <nav aria-label="Main navigation"><Link href="/" className="nav-item active"><Icon name="grid" />Overview<span className="nav-active-dot" /></Link><a href="#payments" className="nav-item"><Icon name="payments" />Payments</a><Link href="/shop" className="nav-item"><Icon name="bank" />Demo shop</Link><Link href="/guide" className="nav-item"><Icon name="code" />API guide<Icon name="external" size={13} /></Link></nav>
       <div className="sidebar-bottom"><div className="sandbox-card"><span className="sandbox-orb"><Icon name="shield" size={22} /></span><strong>A safe place to explore.</strong><p>Test the journey.<br />Leave real money out of it.</p><Link href="/guide">Explore the demo <Icon name="arrow" size={16} /></Link></div><div className="course-label"><span className="course-icon">M1</span><div><strong>MIS465 project</strong><span>Payments core</span></div></div></div>
     </aside>
     <div className="workspace-main">

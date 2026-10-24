@@ -124,7 +124,8 @@ async function main() {
   await waitFor('http://127.0.0.1:3000/health', async r => (await r.json()).database === 'connected');
   if (verify) {
     await run(process.execPath, ['scripts/smoke-m1.mjs'], api);
-    console.log('M1 verification completed. No real money or provider connections.');
+    await run(process.execPath, ['scripts/smoke-m23.mjs'], api);
+    console.log('M1–M3 verification completed. No real money or provider connections.');
     stop(0);
     return;
   }
@@ -135,7 +136,12 @@ async function main() {
     return data.test_mode === true && Array.isArray(data.payments) && Boolean(data.merchant?.id);
   });
   console.log('PayBD Demo ready on local port 3001; API on 3000. DEMO MODE: no real money.');
+  console.log('Demo shop: http://localhost:3001/shop');
   console.log('Press Ctrl+C to stop app services. Database and fictional records are retained.');
+  if (process.argv.includes('--open-shop') && process.platform === 'win32') {
+    const browser = spawn('cmd.exe', ['/d', '/s', '/c', 'start "" "http://localhost:3001/shop"'], { stdio: 'ignore', windowsHide: true });
+    browser.on('error', () => console.log('Open localhost on port 3001, path /shop, in your browser.'));
+  }
 }
 main().catch((error) => {
   if (stopping) return;

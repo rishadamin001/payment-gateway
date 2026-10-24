@@ -40,7 +40,7 @@ export class PaymentsService {
     p.currency, p.status, p.success_url, p.cancel_url, p.request_fingerprint,
     p.created_at, p.updated_at, p.expires_at`;
 
-  private async authenticate(authorization: string | undefined): Promise<Merchant> {
+  async authenticate(authorization: string | undefined): Promise<Merchant> {
     const match = authorization?.match(/^Bearer (paybd_test_[A-Za-z0-9_-]{43})$/);
     if (!match) {
       throw new UnauthorizedException('A valid PayBD Demo test API key is required');
