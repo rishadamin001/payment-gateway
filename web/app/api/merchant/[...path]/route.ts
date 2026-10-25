@@ -18,7 +18,7 @@ async function proxy(req:Request,{params}:{params:Promise<{path:string[]}>}){
   const response=await fetch(new URL(`/v1/merchant/${path.join('/')}${new URL(req.url).search}`,process.env.PAYBD_API_BASE_URL??'http://127.0.0.1:3000'),{method:req.method,headers:{'Content-Type':'application/json',Cookie:req.headers.get('cookie')??'',Origin:origin??'','Idempotency-Key':req.headers.get('idempotency-key')??''},body,cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
   const headers=new Headers({'Content-Type':response.headers.get('content-type')??'application/json','Cache-Control':'no-store'});
   for(const h of ['set-cookie','content-disposition'])if(response.headers.has(h))headers.set(h,response.headers.get(h)!);
-  return new Response(await response.text(),{status:response.status,headers});
+  return new Response(await response.arrayBuffer(),{status:response.status,headers});
  }catch{return apiError('Merchant service unavailable or invalid JSON',503);}
 }
 export {proxy as GET,proxy as POST};

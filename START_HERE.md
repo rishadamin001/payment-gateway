@@ -5,7 +5,7 @@
 ## Exactly what to run
 
 1. Install **Node.js 24** and make sure your existing **PostgreSQL** service is running. Keep your existing `payment_gateway` database. You do **not** need Docker.
-2. Extract this ZIP into a **new folder** (not over your existing project). Open the extracted `PayBD_M1_M5` folder.
+2. Extract this ZIP into a **new folder** (not over your existing project). Open the project folder containing `start-demo.bat`.
 3. **Double-click `start-demo.bat`.** It uses `DATABASE_URL` if already set in its environment. Otherwise a hidden prompt asks for it. Enter your PostgreSQL connection URL in this format, substituting your own username/password:
    `postgresql://USER:PASSWORD@localhost:5432/payment_gateway`
    The value is not displayed, saved to a file, or committed. URL-encode special characters in the password (for example `@` becomes `%40`). No `.env` file is needed or read.
@@ -55,3 +55,17 @@ to **Accept every delivery** and click **Retry event**. No external service or m
 is involved. Older partially refunded examples without recorded amounts cannot be
 refunded again. Cloud builds, tests and browser checks are documented in
 `docs/M5_VERIFICATION.md`; native Windows verification remains for you to run.
+
+## M6 payment links and invoices
+
+From the merchant dashboard open **Payment links**. Create a fictional amount,
+expiry and one-time or reusable link, then copy its shareable URL or download the QR
+image. Open the link to run hosted checkout. A one-time link cannot collect another
+payment after a successful payment, including after a refund.
+The default links use `localhost:3001`: open them on the same laptop. A phone QR
+scan needs a separately reachable deployment address; the launcher stays local.
+
+Open **Invoices** to create a draft with line items and a due date. Send the invoice
+in-app to activate its payment link, download its PDF, or record a reminder. Paying
+the link marks the invoice paid. Sent invoices past their due date show overdue;
+reminders stay inside PayBD and no email or SMS is sent.
