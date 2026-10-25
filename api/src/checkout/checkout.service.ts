@@ -11,7 +11,7 @@ type Method = typeof methods[number];
 type CheckoutPayment = {
   id: string; merchant_order_id: string; business_name: string;
   amount_paisa: string; currency: string; status: PaymentStatus;
-  expires_at: Date; shop_order_id: string | null; database_now: Date;
+  expires_at: Date; shop_order_id: string | null; payment_link_id: string | null; database_now: Date;
 };
 type Challenge = {
   id: string; method: Method; attempts: number; expires_at: Date;
@@ -55,7 +55,7 @@ export class CheckoutService {
     if (!uuid(id)) throw new BadRequestException('Invalid checkout ID');
     const result = await client.query<CheckoutPayment>(`SELECT p.id, p.merchant_order_id,
       m.business_name, p.amount_paisa::text, p.currency, p.status, p.expires_at,
-      o.id AS shop_order_id, clock_timestamp() AS database_now
+      o.id AS shop_order_id, p.payment_link_id, clock_timestamp() AS database_now
       FROM public.payments p JOIN public.merchants m ON m.id = p.merchant_id
       LEFT JOIN public.shop_orders o ON o.id = p.id
       WHERE p.id = $1::uuid FOR UPDATE OF p`, [id]);
@@ -80,7 +80,7 @@ export class CheckoutService {
       merchant_order_id: payment.merchant_order_id,
       amount_paisa: Number(payment.amount_paisa), amount_display: formatBDT(Number(payment.amount_paisa)),
       currency: payment.currency, status: payment.status, expires_at: payment.expires_at,
-      server_time: payment.database_now, shop_order_id: payment.shop_order_id,
+      server_time: payment.database_now, shop_order_id: payment.shop_order_id, payment_link_id: payment.payment_link_id,
       method: method.rows[0]?.method ?? null, notice: DEMO_NOTICE, test_mode: true,
     };
   }

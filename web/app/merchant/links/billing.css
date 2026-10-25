@@ -1,0 +1,137 @@
+.billing-shell h1 {
+  margin: 22px 0;
+  font-size: 30px;
+}
+.billing-shell h3 {
+  margin: 8px 0;
+}
+.billing-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 24px;
+  align-items: start;
+}
+.billing-grid .merchant-card {
+  margin-top: 0;
+}
+.billing-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.billing-actions .button {
+  white-space: normal;
+  text-align: center;
+}
+.billing-entry {
+  border-top: 1px solid #dfe7ef;
+  padding: 18px 0;
+  overflow-wrap: anywhere;
+}
+.billing-entry:first-of-type {
+  border-top: 0;
+}
+.billing-status {
+  display: inline-block;
+  background: #edf5f5;
+  color: #11665f;
+  padding: 5px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.billing-shell .billing-url {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 12px;
+}
+.billing-qr {
+  max-width: 220px;
+  height: auto;
+  border: 1px solid #e4eaf0;
+  border-radius: 8px;
+}
+.billing-shell .billing-check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.billing-items {
+  display: grid;
+  grid-template-columns: minmax(150px, 3fr) minmax(75px, 1fr) minmax(
+      110px,
+      1.5fr
+    ) auto;
+  gap: 10px;
+  align-items: end;
+  border-bottom: 1px solid #e4eaf0;
+  padding: 10px 0;
+}
+.billing-items label {
+  min-width: 0;
+}
+.billing-items button {
+  margin-bottom: 12px;
+}
+.billing-total {
+  padding: 18px;
+  background: #edf6f5;
+  border-radius: 8px;
+  margin: 18px 0;
+  font-size: 18px;
+}
+.billing-shell table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+}
+.billing-shell th,
+.billing-shell td {
+  border-bottom: 1px solid #e7edf2;
+}
+.billing-reminders {
+  padding-left: 18px;
+}
+.billing-public {
+  max-width: 640px;
+}
+.billing-public .merchant-card {
+  padding: 30px;
+}
+.billing-public .billing-total {
+  font-size: 32px;
+  font-weight: 700;
+}
+.billing-public .button {
+  width: 100%;
+  box-sizing: border-box;
+}
+.billing-public small {
+  display: block;
+  color: #64748b;
+  margin: 12px 0;
+  line-height: 1.6;
+}
+@media (max-width: 800px) {
+  .billing-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .billing-items {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .billing-items label:first-child {
+    grid-column: 1/-1;
+  }
+  .billing-public .merchant-card {
+    padding: 20px;
+  }
+  .billing-shell h1 {
+    font-size: 26px;
+  }
+  .billing-actions {
+    gap: 6px;
+  }
+}
