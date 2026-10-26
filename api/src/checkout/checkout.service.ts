@@ -1,6 +1,6 @@
 import {
   BadRequestException, ConflictException, HttpException, HttpStatus,
-  Injectable, NotFoundException,
+  Injectable, NotFoundException, ForbiddenException,
 } from '@nestjs/common';
 import type { PoolClient } from 'pg';
 import { pool } from '../db.js';
@@ -9,7 +9,7 @@ import { DEMO_NOTICE, formatBDT, type PaymentStatus } from '../payments/payment-
 const methods = ['card', 'bkash', 'nagad', 'rocket', 'bank'] as const;
 type Method = typeof methods[number];
 type CheckoutPayment = {
-  id: string; merchant_order_id: string; business_name: string;
+  id: string; merchant_order_id: string; business_name: string; merchant_status: string;
   amount_paisa: string; currency: string; status: PaymentStatus;
   expires_at: Date; shop_order_id: string | null; payment_link_id: string | null; database_now: Date;
 };
@@ -54,7 +54,7 @@ export class CheckoutService {
   private async lock(client: PoolClient, id: string): Promise<CheckoutPayment> {
     if (!uuid(id)) throw new BadRequestException('Invalid checkout ID');
     const result = await client.query<CheckoutPayment>(`SELECT p.id, p.merchant_order_id,
-      m.business_name, p.amount_paisa::text, p.currency, p.status, p.expires_at,
+      m.business_name, m.status AS merchant_status, p.amount_paisa::text, p.currency, p.status, p.expires_at,
       o.id AS shop_order_id, p.payment_link_id, clock_timestamp() AS database_now
       FROM public.payments p JOIN public.merchants m ON m.id = p.merchant_id
       LEFT JOIN public.shop_orders o ON o.id = p.id
@@ -96,6 +96,7 @@ export class CheckoutService {
     }
     return this.transaction(async client => {
       const payment = await this.lock(client, id);
+      if (payment.merchant_status !== 'ACTIVE') return new ForbiddenException('This merchant cannot accept simulated payments');
       if (payment.status !== 'PENDING') return new ConflictException('This payment is already final; refresh its result');
       await client.query(`UPDATE public.checkout_challenges SET superseded_at = clock_timestamp()
         WHERE payment_id = $1 AND superseded_at IS NULL AND completed_at IS NULL`, [id]);
@@ -126,6 +127,7 @@ export class CheckoutService {
         }
         return this.present(client, payment);
       }
+      if (payment.merchant_status !== 'ACTIVE') return new ForbiddenException('This merchant cannot accept simulated payments');
       if (payment.status !== 'PENDING') return new ConflictException('This payment is already final; refresh its result');
       if (challenge.expires_at <= payment.database_now) return new ConflictException('The fake verification step expired; start a new step');
       if (challenge.attempts >= 5) return new HttpException('Fake verification attempt limit reached; start a new step', HttpStatus.TOO_MANY_REQUESTS);

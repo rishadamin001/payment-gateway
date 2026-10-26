@@ -69,3 +69,17 @@ Open **Invoices** to create a draft with line items and a due date. Send the inv
 in-app to activate its payment link, download its PDF, or record a reminder. Paying
 the link marks the invoice paid. Sent invoices past their due date show overdue;
 reminders stay inside PayBD and no email or SMS is sent.
+
+## M7 finance and admin
+
+Open **Finance** in your merchant dashboard. Successful payments and refunds post
+balanced ledger entries. Create a simulated settlement from your available balance,
+then click its payout button. Review payout history and the reconciliation report;
+all movements are fictional, with no bank account or provider involved.
+
+Open **localhost:3001/admin**. On first use, choose your own demo administrator email
+and password; this login is separate from your merchant account. Use **Merchants**
+to approve or suspend an account, **Transactions** to search payments, **Risk flags**
+to inspect unusual amounts/repeated failures, and **Audit log** to inspect actions.
+Classroom merchant accounts remain automatically active until suspended. Suspended
+merchants can inspect records and refund payments, but cannot collect new payments.

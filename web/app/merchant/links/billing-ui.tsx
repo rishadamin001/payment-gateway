@@ -32,6 +32,7 @@ export function BillingShell({
         <Link href="/merchant">← Merchant dashboard</Link>
         <Link href="/merchant/links">Payment links</Link>
         <Link href="/merchant/invoices">Invoices</Link>
+        <Link href="/merchant/finance">Finance</Link>
       </nav>
       <p className="merchant-notice">
         DEMO MODE: fictional payments only. No money, emails or SMS are sent.

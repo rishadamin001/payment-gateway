@@ -129,15 +129,18 @@ async function main() {
     await run(process.execPath, ['scripts/smoke-m4.mjs'], api);
     await run(process.execPath, ['scripts/smoke-m5.mjs'], api);
     await run(process.execPath, ['scripts/smoke-m6.mjs'], api);
-    console.log('M1–M6 verification completed. No real money or provider connections.');
+    await run(process.execPath, ['scripts/smoke-m7.mjs'], api);
+    console.log('M1–M7 verification completed. No real money or provider connections.');
     stop(0);
     return;
   }
   server(process.execPath, ['node_modules/next/dist/bin/next', production ? 'start' : 'dev', '-p', '3001', '-H', '127.0.0.1'], web);
   await waitFor('http://127.0.0.1:3001', async r => (await r.text()).includes('PayBD'));
-  await waitFor('http://127.0.0.1:3001/api/payments', async r => {
+  // A deliberate shop-merchant suspension must not prevent the administrator
+  // from starting the app to review it. Check the public API connection here.
+  await waitFor('http://127.0.0.1:3001/api/shop/catalog', async r => {
     const data = await r.json();
-    return data.test_mode === true && Array.isArray(data.payments) && Boolean(data.merchant?.id);
+    return data.test_mode === true && Array.isArray(data.products) && data.products.length > 0;
   });
   console.log('PayBD Demo ready on local port 3001; API on 3000. DEMO MODE: no real money.');
   console.log('Demo shop: http://localhost:3001/shop');
