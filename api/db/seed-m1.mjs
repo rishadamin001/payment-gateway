@@ -42,6 +42,7 @@ async function seed() {
     // Serialize repeated/concurrent seeds, including classroom key rotation.
     await client.query('SELECT pg_advisory_xact_lock($1::bigint)', ['465000002']);
     const merchantIds = [];
+    const merchantStatuses = [];
     stage = 'fictional merchants';
     for (const merchant of merchants) {
       await client.query(
@@ -49,11 +50,13 @@ async function seed() {
          VALUES ($1, $2, $3) ON CONFLICT (email) DO NOTHING`,
         [merchant.name, merchant.email, merchant.status],
       );
-      const result = await client.query('SELECT id, status FROM public.merchants WHERE email = $1', [merchant.email]);
-      if (!result.rows[0] || result.rows[0].status !== merchant.status) {
-        throw new SeedError('An existing demo merchant has a different status. Existing records were left unchanged.');
-      }
+      const result = await client.query('SELECT id, status FROM public.merchants WHERE email = $1 FOR UPDATE', [merchant.email]);
+      if (!result.rows[0]) throw new SeedError('A fictional merchant could not be loaded.');
+      // Administrator decisions survive restarts. Inactive merchants receive no
+      // new payment attempts, including INSERT ... ON CONFLICT statements whose
+      // BEFORE triggers would otherwise reject a suspended merchant.
       merchantIds.push(result.rows[0].id);
+      merchantStatuses.push(result.rows[0].status);
     }
 
     stage = 'sandbox key registration';
@@ -83,6 +86,7 @@ async function seed() {
     let added = 0;
     const now = Date.now();
     for (let i = 0; i < 84; i++) {
+      if (merchantStatuses[i % 3] !== 'ACTIVE') continue;
       const merchantId = merchantIds[i % 3];
       const merchantPaymentIndex = Math.floor(i / 3);
       const orderId = `DEMO-M1-${String(i + 1).padStart(4, '0')}`;
@@ -121,6 +125,9 @@ async function seed() {
     console.log('PayBD Demo seed completed — DEMO MODE: no real money.');
     console.log(`Four fictional merchants available; ${added} new simulated payments inserted (84 on a fresh database).`);
     console.log('Each active seed merchant has all seven states on a fresh database. Existing payments are never reset.');
+    if (merchantStatuses.slice(0, 3).some(status => status !== 'ACTIVE')) {
+      console.log('Inactive fictional merchants were retained without adding payment attempts. Use the admin panel to approve them when appropriate.');
+    }
     console.log('Test API key registered by SHA-256 hash; no key printed or written to disk.');
   } finally {
     if (client) {
