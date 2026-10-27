@@ -1,40 +1,41 @@
-# PayBD Demo — M1 through M5
+# PayBD Demo — MIS465 (M1–M8)
 
-**DEMO MODE: no real money.** MIS465 educational payment gateway and shop.
+**DEMO MODE: fake money only.** No real cards, PINs, OTPs, banks, providers, SMS or email. This educational payment gateway includes a shop, hosted checkout, merchant dashboard, refunds, signed local webhooks, payment links, invoices, double-entry accounting and administration.
 
-Windows users: follow [the one-page startup guide](START_HERE.md) and double-click
-`start-demo.bat`. Node.js 24 and an existing PostgreSQL database are required. The
-launcher uses `DATABASE_URL` or prompts for it without displaying/saving its value.
-Docker is not required with an existing database.
+## Start on Windows
 
-The shop on local port 3001 at `/shop` offers a cart and server-priced checkout.
-Hosted checkout simulates Card, bKash, Nagad, Rocket and Bank using fictional accounts
-and the advertised fake OTP `000000`. Try success, failure, cancel and expiry; the
-shop receipt reads the real database payment state. No actual providers are connected.
-The public fictional workspace remains at `/`. Your merchant account dashboard at
-`/merchant` adds signup/login, sessions, transaction search/date filters, CSV export,
-revenue and success-rate charts, test-key management and payment timelines.
+Install Node.js 24 and keep your existing PostgreSQL database running. Extract into a new folder and double-click `start-demo.bat`. It uses DATABASE_URL from its environment or asks for it in a hidden prompt. No Docker or .env file is required. See [START_HERE.md](START_HERE.md).
 
-M5 adds full/partial simulated refunds and HMAC-signed webhook events, persistent
-retry queues and delivery logs. Webhooks deliver only to the built-in local receiver;
-choose success, fail-twice or always-fail scenarios in the dashboard. No external
-provider or notification service is contacted. Live API keys remain disabled.
+## Explore
 
-For other platforms, with `DATABASE_URL` already in your environment:
+| Page on local port 3001 | Features |
+| --- | --- |
+| /shop | Cart and five simulated checkout methods |
+| /merchant | Signup/login, charts, search, filters, CSV, test keys and fictional examples |
+| /merchant/webhooks | HMAC signatures, retries and delivery logs |
+| /merchant/links | Expiring one-time/reusable links and QR images |
+| /merchant/invoices | Line items, statuses, PDFs and in-app reminders |
+| /merchant/finance | Journals, settlements, payouts and reconciliation |
+| /admin | Separate login, merchant approval/suspension, risk and audit |
+| /architecture | System design and demo boundaries |
 
-```sh
+Create your merchant account and click **Load fictional examples**. This adds sample data once without replacing records. Admin setup asks you to choose a separate password on first use. There are no preset passwords or live keys. Swagger is on API port 3000 at `/docs`; its OpenAPI document is `/openapi.json`.
+
+## Develop and verify
+
+Node.js 24, NestJS 12, Next.js 16 App Router, TypeScript, PostgreSQL 18. Supply DATABASE_URL securely in the process environment, then run:
+
+```text
 npm run setup
 npm run demo
 ```
 
-If DATABASE_URL is absent, this developer command uses a local Docker PostgreSQL18
-sandbox. The Windows batch launcher always asks for an existing database instead.
+Stop apps before `npm run verify`; also supply TEST_DATABASE_URL for the separate existing payment_gateway_test database. Verification runs migrations, seeds, unit/integration tests, both builds, web lint and live smoke suites. Browser scripts are `api/scripts/browser-m4.mjs` through `browser-m8.mjs`, using Chromium through CHROMIUM_PATH (cloud default /usr/bin/chromium). M7 browser fixtures also require DATABASE_URL. No database is dropped or reset.
 
-Stop apps before `npm run verify`. With your own PostgreSQL supply a separate
-`TEST_DATABASE_URL` for tests. Verification runs migrations, seed, API build/unit/e2e,
-web lint/build, and live M1–M5 smoke checks. No databases are dropped or reset.
+Amounts are integer paisa; screens display taka. Database constraints enforce payment transitions and balanced ledger entries. Merchant/admin sessions are separate; passwords and API keys are hashed. Webhooks use only the built-in local receiver. Add numbered migrations instead of editing applied ones.
 
-See [M4 verification](docs/M4_VERIFICATION.md), [M5 verification and API routes](docs/M5_VERIFICATION.md),
-[M2/M3 verification](docs/M2_M3_VERIFICATION.md), [M1 API reference](docs/M1_SETUP.md),
-and [state rules](docs/payment-workflow.md). Numbered additive migrations preserve
-existing records. Native Windows batch/PowerShell verification remains outstanding.
+See the [complete checklist](docs/CLICK_THROUGH.md), [eight-minute presentation](docs/PRESENTATION.md), [payment rules](docs/payment-workflow.md) and milestone verification documents in docs.
+
+## Limits
+
+Native Windows batch/PowerShell/browser-opening behavior remains to be verified on the laptop. First startup requires Internet for dependencies. The launcher binds to loopback, so QR links cannot work on another device without a reachable deployment. PDFs use a standard font intended for Latin-script demo text. Legacy partial refunds without recorded amounts remain review exceptions and block settlement. Risk flags are classroom heuristics. No production deployment or real payment integration is included.

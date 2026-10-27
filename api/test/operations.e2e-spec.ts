@@ -15,7 +15,7 @@ process.env.PAYBD_WEBHOOK_WORKER = '0';
 const db = new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL });
 let app: INestApplication,
   apiPool: pg.Pool,
-  service: { dispatch: () => Promise<void> };
+  service: { dispatch: (merchantId?: string) => Promise<void> };
 let cookie = '',
   other = '',
   merchant = '',
@@ -125,7 +125,7 @@ it('queues payment events atomically and retries twice before verified delivery'
       "UPDATE webhook_events SET next_attempt_at=now() WHERE merchant_id=$1 AND status IN ('PENDING','RETRY')",
       [merchant],
     );
-    await service.dispatch();
+    await service.dispatch(merchant);
   }
   events = (await get('webhooks/events')).body.events;
   expect(
@@ -225,7 +225,7 @@ it('exhausts retries, scopes logs/retry, and recovers manually', async () => {
       "UPDATE webhook_events SET next_attempt_at=now() WHERE merchant_id=$1 AND status IN ('PENDING','RETRY')",
       [merchant],
     );
-    await service.dispatch();
+    await service.dispatch(merchant);
   }
   const events = (await get('webhooks/events')).body.events;
   const event = events.find(
@@ -237,7 +237,7 @@ it('exhausts retries, scopes logs/retry, and recovers manually', async () => {
   await post(`webhooks/events/${event.id}/retry`, {}, other).expect(409);
   await post('webhooks', { enabled: true, receiver_mode: 'success' });
   await post(`webhooks/events/${event.id}/retry`).expect(201);
-  await service.dispatch();
+  await service.dispatch(merchant);
   const updated = (await get('webhooks/events')).body.events.find(
     (e: { id: string }) => e.id === event.id,
   );

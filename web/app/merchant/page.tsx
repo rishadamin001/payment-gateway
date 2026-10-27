@@ -1,20 +1,525 @@
-'use client';
-import Link from 'next/link';
-import {useRouter} from 'next/navigation';
-import {useEffect,useState,type FormEvent} from 'react';
-import './merchant.css';
-export async function merchantCall(path:string,body?:unknown,key?:string){const r=await fetch(`/api/merchant/${path}`,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(key?{'Idempotency-Key':key}:{})},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});const data=await r.json();if(!r.ok)throw new Error(data.message??'Request failed');return data;}
-const taka=(n:number)=>'৳'+(n/100).toLocaleString('en-BD',{minimumFractionDigits:2,maximumFractionDigits:2});
-type Row={id:string;merchant_order_id:string;amount_paisa:number;status:string;created_at:string};
-type Data={payments:Row[];total:number;page:number;summary:{total:number;successful:number;gross_paisa:number};chart:{day:string;gross_paisa:number;total:number;successful:number}[]};
-type Key={id:string;name:string;mode:string;revoked_at:string|null};
-export default function Merchant(){
- const router=useRouter();
- const [me,setMe]=useState<{business_name:string}|null>(null),[loaded,setLoaded]=useState(false),[signup,setSignup]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false),[data,setData]=useState<Data|null>(null),[keys,setKeys]=useState<Key[]>([]),[newKey,setNewKey]=useState(''),[query,setQuery]=useState(''),[page,setPage]=useState(1);
- useEffect(()=>{merchantCall('me').then(setMe).catch(()=>{}).finally(()=>setLoaded(true));},[]);
- useEffect(()=>{if(me)merchantCall(`payments?${query}&page=${page}`).then(setData).catch(e=>setError(e.message));},[me,query,page]);
- async function authenticate(e:FormEvent<HTMLFormElement>){e.preventDefault();setBusy(true);setError('');const form=e.currentTarget;const body=Object.fromEntries(new FormData(form));try{await merchantCall(signup?'signup':'login',body);form.reset();setMe(await merchantCall('me'));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- async function loadKeys(){try{setKeys((await merchantCall('keys')).keys);}catch(e){setError((e as Error).message);}}
- async function demo(){setBusy(true);try{const id=crypto.randomUUID();const p=await merchantCall('demo-payment',{amount_paisa:150000,currency:'BDT',merchant_order_id:`DEMO-${id.slice(0,8)}`,success_url:location.origin+'/merchant',cancel_url:location.origin+'/merchant'},id);router.push(`/checkout/${p.id}`);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- return <main className="merchant-shell"><nav><Link href="/">PayBD Demo</Link><Link href="/shop">Demo shop</Link><Link href="/merchant">Merchant dashboard</Link><Link href="/merchant/webhooks">Webhooks</Link><Link href="/merchant/links">Payment links</Link><Link href="/merchant/invoices">Invoices</Link><Link href="/merchant/finance">Finance</Link><Link href="/admin">Admin</Link></nav><p className="merchant-notice">DEMO MODE: no real money. Test credentials and fictional transactions only.</p>{error&&<p role="alert" className="form-error">{error}</p>}{!loaded?<p>Loading…</p>:!me?<section className="merchant-card auth"><h1>{signup?'Create merchant account':'Merchant sign in'}</h1><p>Demo accounts are activated automatically for classroom use.</p><form onSubmit={authenticate}>{signup&&<label>Business name<input name="business_name" required maxLength={100}/></label>}<label>Email<input name="email" type="email" required autoComplete="username"/></label><label>Password<input name="password" type="password" required minLength={12} maxLength={128} autoComplete={signup?'new-password':'current-password'}/></label><small>Use a unique demo password, at least 12 characters.</small><button disabled={busy} className="button primary">{signup?'Sign up':'Sign in'}</button></form><button className="button secondary" onClick={()=>{setSignup(!signup);setError('');}}>{signup?'Already registered? Sign in':'Create an account'}</button></section>:<><header><h1>{me.business_name}</h1><button className="button secondary" onClick={async()=>{await merchantCall('logout',{});setMe(null);setData(null);setNewKey('');}}>Sign out</button></header><section className="merchant-card"><h2>Transactions & analytics</h2><form className="merchant-filters" onSubmit={e=>{e.preventDefault();setPage(1);setQuery(new URLSearchParams(Object.fromEntries(new FormData(e.currentTarget)) as Record<string,string>).toString());}}><label>Search<input name="search" placeholder="Order or payment ID"/></label><label>Status<select name="status"><option value="">All</option>{['PENDING','PAID','FAILED','CANCELLED','EXPIRED','REFUNDED','PARTIALLY_REFUNDED'].map(s=><option key={s}>{s}</option>)}</select></label><label>From (Dhaka)<input name="from" type="date"/></label><label>To (Dhaka)<input name="to" type="date"/></label><button className="button primary">Apply filters</button></form><p><a className="button secondary" href={`/api/merchant/payments/export?${query}`}>Export CSV</a> <button disabled={busy} className="button secondary" onClick={()=>void demo()}>Create demo payment</button></p>{data&&<><div className="merchant-metrics"><article><small>Gross paid volume (before refunds)</small><h2>{taka(data.summary.gross_paisa)}</h2></article><article><small>Success rate · successful / all requests</small><h2>{data.summary.total?Math.round(data.summary.successful/data.summary.total*100):0}%</h2></article><article><small>Matching transactions</small><h2>{data.total}</h2></article></div><div className="merchant-charts">{['Revenue','Success rate'].map((title,index)=><figure key={title}><figcaption>{title} by day · latest 60 active days</figcaption><svg viewBox="0 0 600 140" role="img" aria-label={`${title} chart`}>{data.chart.map((d,i)=>{const value=index?d.successful/Math.max(1,d.total):d.gross_paisa/Math.max(1,...data.chart.map(x=>x.gross_paisa));return <rect key={d.day} x={i*600/Math.max(1,data.chart.length)} y={125-value*115} width={Math.max(1,600/Math.max(1,data.chart.length)-4)} height={Math.max(1,value*115)} fill={index?'#3767bb':'#009889'}><title>{d.day}: {index?Math.round(value*100)+'%':taka(d.gross_paisa)}</title></rect>;})}</svg>{!data.chart.length&&<p>No transactions yet. Create a demo payment to try checkout.</p>}<small>{data.chart[0]?.day} — {data.chart.at(-1)?.day}</small></figure>)}</div><div className="merchant-table"><table><thead><tr><th>Order</th><th>Amount</th><th>Status</th><th>Created</th></tr></thead><tbody>{data.payments.map(p=><tr key={p.id}><td><Link href={`/merchant/payments/${p.id}`}>{p.merchant_order_id}</Link></td><td>{taka(p.amount_paisa)}</td><td>{p.status}</td><td>{new Date(p.created_at).toLocaleString('en-GB',{timeZone:'Asia/Dhaka'})}</td></tr>)}</tbody></table></div><p><button disabled={page===1} onClick={()=>setPage(page-1)}>Previous</button> Page {page} <button disabled={page*25>=data.total} onClick={()=>setPage(page+1)}>Next</button></p></>}</section><section className="merchant-card"><h2>API keys</h2><p>Test keys can create simulated payments. Live keys are disabled — demo only.</p><button className="button secondary" disabled>Live mode unavailable</button> <button className="button secondary" onClick={()=>void loadKeys()}>Refresh keys</button> <button className="button primary" onClick={async()=>{try{setNewKey((await merchantCall('keys',{})).api_key);await loadKeys();}catch(e){setError((e as Error).message);}}}>Generate test key</button>{newKey&&<label>One-time test key (copy and store securely)<input type="password" value={newKey} readOnly onFocus={e=>e.target.select()}/><button onClick={()=>void navigator.clipboard.writeText(newKey)}>Copy test key</button><button onClick={()=>setNewKey('')}>Dismiss</button></label>}<ul>{keys.map(k=><li key={k.id}>{k.name} · {k.mode} · {k.revoked_at?'Revoked':'Active'} {!k.revoked_at&&<button onClick={async()=>{await merchantCall(`keys/${k.id}/revoke`,{});await loadKeys();}}>Revoke</button>}</li>)}</ul></section></>}</main>;
+"use client";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
+import "./merchant.css";
+export async function merchantCall(path: string, body?: unknown, key?: string) {
+  const r = await fetch(`/api/merchant/${path}`, {
+    method: body === undefined ? "GET" : "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(key ? { "Idempotency-Key": key } : {}),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    cache: "no-store",
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.message ?? "Request failed");
+  return data;
+}
+const taka = (n: number) =>
+  "৳" +
+  (n / 100).toLocaleString("en-BD", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+type Row = {
+  id: string;
+  merchant_order_id: string;
+  amount_paisa: number;
+  status: string;
+  created_at: string;
+};
+type Data = {
+  payments: Row[];
+  total: number;
+  page: number;
+  summary: { total: number; successful: number; gross_paisa: number };
+  chart: {
+    day: string;
+    gross_paisa: number;
+    total: number;
+    successful: number;
+  }[];
+};
+type Key = {
+  id: string;
+  name: string;
+  mode: string;
+  revoked_at: string | null;
+};
+export default function Merchant() {
+  const router = useRouter();
+  const [me, setMe] = useState<{
+      business_name: string;
+      status: string;
+    } | null>(null),
+    [loaded, setLoaded] = useState(false),
+    [signup, setSignup] = useState(false),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false),
+    [data, setData] = useState<Data | null>(null),
+    [keys, setKeys] = useState<Key[]>([]),
+    [newKey, setNewKey] = useState(""),
+    [query, setQuery] = useState(""),
+    [page, setPage] = useState(1),
+    [seeding, setSeeding] = useState(false),
+    [sampleNotice, setSampleNotice] = useState("");
+  useEffect(() => {
+    merchantCall("me")
+      .then(setMe)
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+  }, []);
+  useEffect(() => {
+    if (me)
+      merchantCall(`payments?${query}&page=${page}`)
+        .then(setData)
+        .catch((e) => setError(e.message));
+  }, [me, query, page]);
+  async function authenticate(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    const form = e.currentTarget;
+    const body = Object.fromEntries(new FormData(form));
+    try {
+      await merchantCall(signup ? "signup" : "login", body);
+      form.reset();
+      setMe(await merchantCall("me"));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function loadKeys() {
+    try {
+      setKeys((await merchantCall("keys")).keys);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  async function samples() {
+    if (seeding) return;
+    setSeeding(true);
+    setError("");
+    setSampleNotice("");
+    try {
+      const result = await merchantCall("demo-data", {});
+      setData(await merchantCall(`payments?${query}&page=${page}`));
+      setSampleNotice(
+        result.created
+          ? "Fictional examples added. Explore transactions, payment links, invoices, webhooks and Finance."
+          : "Fictional examples already loaded. Your existing data is unchanged.",
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSeeding(false);
+    }
+  }
+  async function demo() {
+    setBusy(true);
+    try {
+      const id = crypto.randomUUID();
+      const p = await merchantCall(
+        "demo-payment",
+        {
+          amount_paisa: 150000,
+          currency: "BDT",
+          merchant_order_id: `DEMO-${id.slice(0, 8)}`,
+          success_url: location.origin + "/merchant",
+          cancel_url: location.origin + "/merchant",
+        },
+        id,
+      );
+      router.push(`/checkout/${p.id}`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <main className="merchant-shell">
+      <nav>
+        <Link href="/">PayBD Demo</Link>
+        <Link href="/shop">Demo shop</Link>
+        <Link href="/merchant">Merchant dashboard</Link>
+        <Link href="/merchant/webhooks">Webhooks</Link>
+        <Link href="/merchant/links">Payment links</Link>
+        <Link href="/merchant/invoices">Invoices</Link>
+        <Link href="/merchant/finance">Finance</Link>
+        <Link href="/admin">Admin</Link>
+        <Link href="/architecture">Architecture</Link>
+        <a href="http://localhost:3000/docs">API docs</a>
+      </nav>
+      <p className="merchant-notice">
+        DEMO MODE: no real money. Test credentials and fictional transactions
+        only.
+      </p>
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
+      {!loaded ? (
+        <p>Loading…</p>
+      ) : !me ? (
+        <section className="merchant-card auth">
+          <h1>{signup ? "Create merchant account" : "Merchant sign in"}</h1>
+          <p>Demo accounts are activated automatically for classroom use.</p>
+          <form onSubmit={authenticate}>
+            {signup && (
+              <label>
+                Business name
+                <input name="business_name" required maxLength={100} />
+              </label>
+            )}
+            <label>
+              Email
+              <input
+                name="email"
+                type="email"
+                required
+                autoComplete="username"
+              />
+            </label>
+            <label>
+              Password
+              <input
+                name="password"
+                type="password"
+                required
+                minLength={12}
+                maxLength={128}
+                autoComplete={signup ? "new-password" : "current-password"}
+              />
+            </label>
+            <small>Use a unique demo password, at least 12 characters.</small>
+            <button disabled={busy} className="button primary">
+              {signup ? "Sign up" : "Sign in"}
+            </button>
+          </form>
+          <button
+            className="button secondary"
+            onClick={() => {
+              setSignup(!signup);
+              setError("");
+            }}
+          >
+            {signup ? "Already registered? Sign in" : "Create an account"}
+          </button>
+        </section>
+      ) : (
+        <>
+          <header>
+            <h1>{me.business_name}</h1>
+            <button
+              className="button secondary"
+              onClick={async () => {
+                await merchantCall("logout", {});
+                setMe(null);
+                setData(null);
+                setNewKey("");
+                setSampleNotice("");
+              }}
+            >
+              Sign out
+            </button>
+          </header>
+          <section
+            className="merchant-card"
+            aria-labelledby="demo-examples-title"
+          >
+            <h2 id="demo-examples-title">Prepare a classroom demonstration</h2>
+            <p>
+              Add realistic fictional transactions, payment links, invoices,
+              signed webhooks and finance examples to your account. This runs
+              once and never resets your existing data.
+            </p>
+            <p>
+              Account status: <strong>{me.status}</strong>. Classroom accounts
+              are automatically active; administrator approval is recorded
+              separately.
+            </p>
+            {me.status !== "ACTIVE" && (
+              <p>
+                Collecting new payments and loading examples are unavailable
+                while this account is inactive. You can still inspect its
+                records and refund earlier payments.
+              </p>
+            )}
+            <button
+              className="button primary"
+              disabled={seeding || busy || me.status !== "ACTIVE"}
+              onClick={() => void samples()}
+            >
+              {seeding
+                ? "Loading fictional examples…"
+                : "Load fictional examples"}
+            </button>{" "}
+            <Link href="/architecture">See how PayBD works</Link>
+            {sampleNotice && (
+              <p role="status" data-demo-data="loaded">
+                {sampleNotice}
+              </p>
+            )}
+          </section>
+          <section className="merchant-card">
+            <h2>Transactions & analytics</h2>
+            <form
+              className="merchant-filters"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setPage(1);
+                setQuery(
+                  new URLSearchParams(
+                    Object.fromEntries(new FormData(e.currentTarget)) as Record<
+                      string,
+                      string
+                    >,
+                  ).toString(),
+                );
+              }}
+            >
+              <label>
+                Search
+                <input name="search" placeholder="Order or payment ID" />
+              </label>
+              <label>
+                Status
+                <select name="status">
+                  <option value="">All</option>
+                  {[
+                    "PENDING",
+                    "PAID",
+                    "FAILED",
+                    "CANCELLED",
+                    "EXPIRED",
+                    "REFUNDED",
+                    "PARTIALLY_REFUNDED",
+                  ].map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                From (Dhaka)
+                <input name="from" type="date" />
+              </label>
+              <label>
+                To (Dhaka)
+                <input name="to" type="date" />
+              </label>
+              <button className="button primary">Apply filters</button>
+            </form>
+            <p>
+              <a
+                className="button secondary"
+                href={`/api/merchant/payments/export?${query}`}
+              >
+                Export CSV
+              </a>{" "}
+              <button
+                disabled={busy}
+                className="button secondary"
+                onClick={() => void demo()}
+              >
+                Create demo payment
+              </button>
+            </p>
+            {data && (
+              <>
+                <div className="merchant-metrics">
+                  <article>
+                    <small>Gross paid volume (before refunds)</small>
+                    <h2>{taka(data.summary.gross_paisa)}</h2>
+                  </article>
+                  <article>
+                    <small>Success rate · successful / all requests</small>
+                    <h2>
+                      {data.summary.total
+                        ? Math.round(
+                            (data.summary.successful / data.summary.total) *
+                              100,
+                          )
+                        : 0}
+                      %
+                    </h2>
+                  </article>
+                  <article>
+                    <small>Matching transactions</small>
+                    <h2>{data.total}</h2>
+                  </article>
+                </div>
+                <div className="merchant-charts">
+                  {["Revenue", "Success rate"].map((title, index) => (
+                    <figure key={title}>
+                      <figcaption>
+                        {title} by day · latest 60 active days
+                      </figcaption>
+                      <svg
+                        viewBox="0 0 600 140"
+                        role="img"
+                        aria-label={`${title} chart`}
+                      >
+                        {data.chart.map((d, i) => {
+                          const value = index
+                            ? d.successful / Math.max(1, d.total)
+                            : d.gross_paisa /
+                              Math.max(
+                                1,
+                                ...data.chart.map((x) => x.gross_paisa),
+                              );
+                          return (
+                            <rect
+                              key={d.day}
+                              x={(i * 600) / Math.max(1, data.chart.length)}
+                              y={125 - value * 115}
+                              width={Math.max(
+                                1,
+                                600 / Math.max(1, data.chart.length) - 4,
+                              )}
+                              height={Math.max(1, value * 115)}
+                              fill={index ? "#3767bb" : "#009889"}
+                            >
+                              <title>
+                                {d.day}:{" "}
+                                {index
+                                  ? Math.round(value * 100) + "%"
+                                  : taka(d.gross_paisa)}
+                              </title>
+                            </rect>
+                          );
+                        })}
+                      </svg>
+                      {!data.chart.length && (
+                        <p>
+                          No transactions yet. Create a demo payment to try
+                          checkout.
+                        </p>
+                      )}
+                      <small>
+                        {data.chart[0]?.day} — {data.chart.at(-1)?.day}
+                      </small>
+                    </figure>
+                  ))}
+                </div>
+                <div className="merchant-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Order</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.payments.map((p) => (
+                        <tr key={p.id}>
+                          <td>
+                            <Link href={`/merchant/payments/${p.id}`}>
+                              {p.merchant_order_id}
+                            </Link>
+                          </td>
+                          <td>{taka(p.amount_paisa)}</td>
+                          <td>{p.status}</td>
+                          <td>
+                            {new Date(p.created_at).toLocaleString("en-GB", {
+                              timeZone: "Asia/Dhaka",
+                            })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p>
+                  <button
+                    disabled={page === 1}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    Previous
+                  </button>{" "}
+                  Page {page}{" "}
+                  <button
+                    disabled={page * 25 >= data.total}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    Next
+                  </button>
+                </p>
+              </>
+            )}
+          </section>
+          <section className="merchant-card">
+            <h2>API keys</h2>
+            <p>
+              Test keys can create simulated payments. Live keys are disabled —
+              demo only.
+            </p>
+            <button className="button secondary" disabled>
+              Live mode unavailable
+            </button>{" "}
+            <button
+              className="button secondary"
+              onClick={() => void loadKeys()}
+            >
+              Refresh keys
+            </button>{" "}
+            <button
+              className="button primary"
+              onClick={async () => {
+                try {
+                  setNewKey((await merchantCall("keys", {})).api_key);
+                  await loadKeys();
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+              }}
+            >
+              Generate test key
+            </button>
+            {newKey && (
+              <label>
+                One-time test key (copy and store securely)
+                <input
+                  type="password"
+                  value={newKey}
+                  readOnly
+                  onFocus={(e) => e.target.select()}
+                />
+                <button
+                  onClick={() => void navigator.clipboard.writeText(newKey)}
+                >
+                  Copy test key
+                </button>
+                <button onClick={() => setNewKey("")}>Dismiss</button>
+              </label>
+            )}
+            <ul>
+              {keys.map((k) => (
+                <li key={k.id}>
+                  {k.name} · {k.mode} · {k.revoked_at ? "Revoked" : "Active"}{" "}
+                  {!k.revoked_at && (
+                    <button
+                      onClick={async () => {
+                        await merchantCall(`keys/${k.id}/revoke`, {});
+                        await loadKeys();
+                      }}
+                    >
+                      Revoke
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
+      )}
+    </main>
+  );
 }

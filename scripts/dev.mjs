@@ -103,7 +103,7 @@ async function main() {
     if (!ready) throw new Error('PostgreSQL did not become ready.');
     if (verify) {
       const present = docker(['exec', 'paybd-m1-postgres', 'psql', '-U', 'paybd', '-d', 'postgres', '-tAc', "SELECT 1 FROM pg_database WHERE datname='payment_gateway_test'"], true);
-      if (present !== '1') docker(['exec', 'paybd-m1-postgres', 'createdb', '-U', 'paybd', 'payment_gateway_test'], true);
+      if (present !== '1') throw new Error('The separate payment_gateway_test database is missing. Obtain approval before creating it; verification will not create or reset databases.');
       environment.TEST_DATABASE_URL ??= 'postgresql://paybd@127.0.0.1:5432/payment_gateway_test';
     }
   }
@@ -112,6 +112,7 @@ async function main() {
   await run(process.execPath, ['db/migrate.mjs'], api);
   await run(process.execPath, ['db/seed-m1.mjs'], api);
   await run(npm, ['run', 'build'], api);
+  await run(process.execPath, ['db/seed-m8.mjs'], api);
   if (verify) {
     if (!environment.TEST_DATABASE_URL) throw new Error('TEST_DATABASE_URL must identify a separate test database for verification.');
     await run(npm, ['test'], api, {...environment,PAYBD_WEBHOOK_WORKER:'0'});
@@ -130,7 +131,8 @@ async function main() {
     await run(process.execPath, ['scripts/smoke-m5.mjs'], api);
     await run(process.execPath, ['scripts/smoke-m6.mjs'], api);
     await run(process.execPath, ['scripts/smoke-m7.mjs'], api);
-    console.log('M1–M7 verification completed. No real money or provider connections.');
+    await run(process.execPath, ['scripts/smoke-m8.mjs'], api);
+    console.log('M1–M8 verification completed. No real money or provider connections.');
     stop(0);
     return;
   }

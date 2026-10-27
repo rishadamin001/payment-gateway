@@ -248,15 +248,15 @@ export class OperationsService implements OnModuleInit, OnModuleDestroy {
     );
     return { status: 200 };
   }
-  async dispatch() {
+  async dispatch(merchantId?: string) {
     if (this.running) return;
     this.running = true;
     try {
       for (let i = 0; i < 20; i++) {
         const lease = randomUUID();
         const rows = await pool.query(
-          `WITH due AS (SELECT e.id FROM webhook_events e JOIN merchant_webhooks w ON w.merchant_id=e.merchant_id WHERE w.enabled AND e.status IN ('PENDING','RETRY') AND e.next_attempt_at<=now() AND (e.locked_until IS NULL OR e.locked_until<now()) ORDER BY e.created_at FOR UPDATE OF e SKIP LOCKED LIMIT 1) UPDATE webhook_events e SET locked_until=now()+interval '30 seconds',lease_id=$1,attempts=attempts+1 FROM due WHERE e.id=due.id RETURNING e.*`,
-          [lease],
+          `WITH due AS (SELECT e.id FROM webhook_events e JOIN merchant_webhooks w ON w.merchant_id=e.merchant_id WHERE w.enabled AND ($2::uuid IS NULL OR e.merchant_id=$2) AND e.status IN ('PENDING','RETRY') AND e.next_attempt_at<=now() AND (e.locked_until IS NULL OR e.locked_until<now()) ORDER BY e.created_at FOR UPDATE OF e SKIP LOCKED LIMIT 1) UPDATE webhook_events e SET locked_until=now()+interval '30 seconds',lease_id=$1,attempts=attempts+1 FROM due WHERE e.id=due.id RETURNING e.*`,
+          [lease, merchantId ?? null],
         );
         const e = rows.rows[0];
         if (!e) break;
