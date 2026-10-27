@@ -1,85 +1,20 @@
-# PayBD Demo — start here (Windows)
+# PayBD Demo — Windows quick start
 
-**DEMO MODE: no real money.** Every card, bKash, Nagad, Rocket, bank account and OTP is simulated. Never enter real payment details.
+**DEMO MODE: fake money only. Never enter real card details, PINs or OTPs.**
 
-## Exactly what to run
+1. Have **Node.js 24** installed and your existing **PostgreSQL** service running with database `payment_gateway` on port5432. No Docker is needed.
+2. Extract the source ZIP into a **new folder**, preserving your previous project. Open the folder containing `start-demo.bat`.
+3. **Double-click `start-demo.bat`.** It uses DATABASE_URL if already set in its process environment. Otherwise a hidden prompt asks for your connection URL, in this format: `postgresql://USER:PASSWORD@localhost:5432/payment_gateway`. Substitute your credentials and URL-encode password symbols (for example @ becomes %40). The value is not displayed or saved; no .env file is needed or read by the launcher.
+4. Wait for **PayBD Demo ready**. First startup needs Internet to install locked dependencies. The launcher applies additive migrations and repeatable fictional seeds, then starts the API and website. Keep the terminal open.
+5. The shop opens automatically. Otherwise enter **localhost:3001/shop**. Add products → Pay → choose a method → enter the displayed fake OTP **000000** → choose a simulated result. No SMS is sent.
+6. Open **localhost:3001/merchant**, create your own fictional account with a new demo-only password (12+ characters), then click **Load fictional examples**. This populates your dashboards once without replacing records. Explore transactions, refunds, webhooks, payment links, invoices and finance.
+7. Open **localhost:3001/admin**. On first use choose a separate administrator email/password. Approve or suspend merchants, inspect all transactions, risk hints and audit events. Classroom signups start active; suspension blocks new payments. Never show passwords or test API keys during your presentation.
+8. Open **localhost:3001/architecture** and **localhost:3000/docs** for architecture and Swagger. Follow [the full click-through checklist](docs/CLICK_THROUGH.md) and [eight-minute demo script](docs/PRESENTATION.md).
 
-1. Install **Node.js 24** and make sure your existing **PostgreSQL** service is running. Keep your existing `payment_gateway` database. You do **not** need Docker.
-2. Extract this ZIP into a **new folder** (not over your existing project). Open the project folder containing `start-demo.bat`.
-3. **Double-click `start-demo.bat`.** It uses `DATABASE_URL` if already set in its environment. Otherwise a hidden prompt asks for it. Enter your PostgreSQL connection URL in this format, substituting your own username/password:
-   `postgresql://USER:PASSWORD@localhost:5432/payment_gateway`
-   The value is not displayed, saved to a file, or committed. URL-encode special characters in the password (for example `@` becomes `%40`). No `.env` file is needed or read.
-4. Wait for **“PayBD Demo ready”**. The launcher installs locked dependencies, applies additive migrations, seeds fictional examples, and starts both apps. The first start needs Internet access. Keep the terminal open.
-5. Your browser opens the shop. If it does not, enter **localhost:3001/shop** in your browser. Your merchant dashboard is **localhost:3001/merchant**; **localhost:3001** shows the public fictional examples.
+**Stop:** Ctrl+C in the launcher terminal. Restart the same batch file; records and admin decisions remain. PDF/QR/CSV downloads use your browser's normal Downloads behavior. Links and QR codes default to localhost and work on the same laptop; another device requires a reachable deployment.
 
-Already have `DATABASE_URL` in a PowerShell environment? Run `./start-demo.bat` in that same window. It will not prompt again. Do not paste connection credentials into chat, source files or commands that are saved to shared logs.
+**Troubleshooting:** check Node24, PostgreSQL, the database name and free ports3000/3001. If DATABASE_URL is set in a PowerShell window, run `./start-demo.bat` from that window. Do not paste credentials into chat, files or shared logs. No real provider credentials are required.
 
-## Try the complete flow
+**Optional automated verification:** stop the apps, provide DATABASE_URL and TEST_DATABASE_URL securely in the process environment (test URL must name a separate existing `payment_gateway_test` database), then run `npm run verify` from this folder. Normal demo startup needs no test database. Ask before creating any new database; tests never drop/reset data.
 
-Add products to the cart → **Pay** → choose **Card, bKash, Nagad, Rocket or Bank** → request the fake OTP → enter the practice code **000000** shown on screen → choose a simulated success or failure. No SMS is sent. **Cancel** and **Expire demo payment** demonstrate the other terminal results. The shop result page reads the actual database state; changing a URL cannot make a payment paid. Retry after a failure/cancellation/expiry creates a new payment. The merchant dashboard shows state history.
-
-## Stop or check it
-
-Press **Ctrl+C** in the launcher terminal to stop the apps. Your existing database and all records remain. Start the same batch file again to resume; seeds do not duplicate records.
-
-For the full automated suite, stop the demo, create a separate empty PostgreSQL database named `payment_gateway_test`, and provide its connection as `TEST_DATABASE_URL` in your process environment alongside `DATABASE_URL`. From the extracted folder run:
-
-```text
-npm run verify
-```
-
-Normal demo startup does not need a test database. Tests add isolated fictional fixtures without dropping databases. If startup fails: check PostgreSQL is running, the URL names an existing database, and ports **3000/3001** are free. The launcher will not stop unrelated services or erase data. No real provider credentials are needed.
-
-## M4 merchant dashboard
-
-Open **localhost:3001/merchant**, choose **Create an account**, and use a fictional email
-and a new demo-only password of at least 12 characters. No preset password is needed.
-Click **Create demo payment**, finish the simulated checkout, then return to Merchant
-Dashboard to filter transactions, export CSV, inspect charts, or open a payment timeline.
-The API keys panel creates/revokes test keys; live mode is disabled. Test keys are shown
-once in a masked field for copying. Never send passwords or keys to chat or source files.
-
-## M5 refunds and signed webhooks
-
-In your merchant dashboard, click **Webhooks** → enable webhooks → choose **Fail twice,
-then accept** → **Save settings**. Return to the dashboard, click **Create demo payment**,
-and finish a successful simulated checkout. Open that payment from your transaction list.
-Under **Simulated refunds**, enter a smaller taka amount and a reason, then click
-**Confirm demo refund**. Leave the amount blank on a second refund to return the rest.
-The payment timeline shows **PAID → PARTIALLY_REFUNDED → REFUNDED**, with a separate
-refund history. Open **Webhooks** again to see signed deliveries retry and succeed.
-
-Webhooks use the built-in local receiver only. To demonstrate exhausted retries,
-choose **Always fail**, create another payment, and wait about 35 seconds. Then switch
-to **Accept every delivery** and click **Retry event**. No external service or money
-is involved. Older partially refunded examples without recorded amounts cannot be
-refunded again. Cloud builds, tests and browser checks are documented in
-`docs/M5_VERIFICATION.md`; native Windows verification remains for you to run.
-
-## M6 payment links and invoices
-
-From the merchant dashboard open **Payment links**. Create a fictional amount,
-expiry and one-time or reusable link, then copy its shareable URL or download the QR
-image. Open the link to run hosted checkout. A one-time link cannot collect another
-payment after a successful payment, including after a refund.
-The default links use `localhost:3001`: open them on the same laptop. A phone QR
-scan needs a separately reachable deployment address; the launcher stays local.
-
-Open **Invoices** to create a draft with line items and a due date. Send the invoice
-in-app to activate its payment link, download its PDF, or record a reminder. Paying
-the link marks the invoice paid. Sent invoices past their due date show overdue;
-reminders stay inside PayBD and no email or SMS is sent.
-
-## M7 finance and admin
-
-Open **Finance** in your merchant dashboard. Successful payments and refunds post
-balanced ledger entries. Create a simulated settlement from your available balance,
-then click its payout button. Review payout history and the reconciliation report;
-all movements are fictional, with no bank account or provider involved.
-
-Open **localhost:3001/admin**. On first use, choose your own demo administrator email
-and password; this login is separate from your merchant account. Use **Merchants**
-to approve or suspend an account, **Transactions** to search payments, **Risk flags**
-to inspect unusual amounts/repeated failures, and **Audit log** to inspect actions.
-Classroom merchant accounts remain automatically active until suspended. Suspended
-merchants can inspect records and refund payments, but cannot collect new payments.
+**Windows checks still outstanding:** native batch execution, hidden PowerShell prompt, browser auto-open, Downloads permissions, and Ctrl+C process cleanup. Cloud builds, database/API tests and Chromium browser checks are recorded under docs. Package installation may take longer on Windows; firewall/antivirus and occupied ports can affect startup.

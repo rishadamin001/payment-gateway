@@ -601,6 +601,7 @@ export default function AdminPage() {
       <nav>
         <Link href="/">PayBD Demo</Link>
         <Link href="/merchant">Merchant dashboard</Link>
+        <Link href="/architecture">Architecture</Link>
         <Link href="/shop">Demo shop</Link>
       </nav>
       <p className="merchant-notice">

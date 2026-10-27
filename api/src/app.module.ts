@@ -1,3 +1,4 @@
+import { ShowcaseModule } from './showcase/showcase.module.js';
 import { AdminModule } from './admin/admin.module.js';
 import { FinanceModule } from './finance/finance.module.js';
 import { BillingModule } from './billing/billing.module.js';
@@ -13,7 +14,7 @@ import { ShopModule } from './shop/shop.module.js';
 import { HttpErrorFilter } from './http-error.filter.js';
 
 @Module({
-  imports: [AdminModule, FinanceModule, BillingModule, OperationsModule, MerchantModule, PaymentsModule, CheckoutModule, ShopModule],
+  imports: [ShowcaseModule, AdminModule, FinanceModule, BillingModule, OperationsModule, MerchantModule, PaymentsModule, CheckoutModule, ShopModule],
   controllers: [AppController],
   providers: [AppService, { provide: APP_FILTER, useClass: HttpErrorFilter }],
 })
