@@ -1,0 +1,36 @@
+# Review Render's displayed recurring cost before creating these resources.
+# This creates a separate hosted demo database; it never connects to Windows PostgreSQL.
+services:
+  - type: web
+    name: paybd-demo
+    runtime: node
+    plan: starter
+    branch: deployment/render
+    buildCommand: npm run setup && npm run build
+    startCommand: node scripts/hosted.mjs
+    healthCheckPath: /health
+    numInstances: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: paybd-demo-db
+          property: connectionString
+      - key: PAYBD_HOSTED_KEY_SEED
+        generateValue: true
+      - key: PAYBD_ADMIN_EMAIL
+        sync: false
+      - key: PAYBD_ADMIN_PASSWORD
+        sync: false
+databases:
+  - name: paybd-demo-db
+    databaseName: payment_gateway
+    user: paybd
+    plan: basic-256mb
+    postgresMajorVersion: "18"
+    ipAllowList: []

@@ -48,7 +48,7 @@ export default function Architecture() {
         <Link href="/architecture" aria-current="page">
           Architecture
         </Link>
-        <a href="http://localhost:3000/docs">API docs</a>
+        <a href="/docs/">API docs</a>
       </nav>
 
       <header className="arch-hero">
@@ -249,7 +249,7 @@ export default function Architecture() {
         </div>
         <div className="arch-actions">
           <Link href="/merchant">Open merchant dashboard</Link>
-          <a href="http://localhost:3000/docs">Browse OpenAPI / Swagger</a>
+          <a href="/docs/">Browse OpenAPI / Swagger</a>
         </div>
       </footer>
     </main>

@@ -1128,7 +1128,7 @@ export const openApiDocument = {
       'DEMO MODE: no real money. MIS465 classroom gateway. Never submit real cards, PINs, OTPs or provider credentials. Monetary values are integer paisa; the UI displays Bangladeshi taka. This local Swagger explorer permits GET requests only: perform authenticated mutations in the web app on port3001, or use an API client with the required Origin/header/cookie. Sessions are HttpOnly; sign in through the web app on the same hostname to inspect session-protected GETs. API keys are generated once in the merchant dashboard and must not be logged or shared. There is no live mode. Swagger assets are served locally; no CDN or external validator is used.',
   },
   servers: [
-    { url: '/', description: 'Current local API origin (normally port3000)' },
+    { url: '/', description: 'Current origin: hosted website or local API' },
   ],
   tags: [
     { name: 'System' },

@@ -8,6 +8,10 @@ Install Node.js 24 and keep your existing PostgreSQL database running. Extract i
 
 ## Explore
 
+For an online classroom demo, use the prepared [Render deployment guide](docs/DEPLOY_RENDER.md)
+and `render.yaml` on branch `deployment/render`. Public deployment still requires
+the owner's hosting-account connection and review of the provider's charges.
+
 | Page on local port 3001 | Features |
 | --- | --- |
 | /shop | Cart and five simulated checkout methods |

@@ -34,7 +34,7 @@ export function BillingShell({
         <Link href="/merchant/invoices">Invoices</Link>
         <Link href="/merchant/finance">Finance</Link>
         <Link href="/architecture">Architecture</Link>
-        <a href="http://localhost:3000/docs">API docs</a>
+        <a href="/docs/">API docs</a>
       </nav>
       <p className="merchant-notice">
         DEMO MODE: fictional payments only. No money, emails or SMS are sent.
