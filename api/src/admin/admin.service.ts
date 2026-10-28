@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   Injectable,
   NotFoundException,
@@ -52,6 +53,7 @@ export class AdminService {
     return r.rows[0];
   }
   async setupStatus() {
+    if (process.env.PAYBD_HOSTED === '1') return { setup_required: false };
     return {
       setup_required: !(
         await pool.query('SELECT 1 FROM admin_accounts LIMIT 1')
@@ -98,6 +100,7 @@ export class AdminService {
     }
   }
   async setup(body: Record<string, unknown>) {
+    if (process.env.PAYBD_HOSTED === '1') throw new ForbiddenException('Hosted administrators are provisioned through secure environment settings.');
     const input = this.loginInput(body),
       passwordHash = await hashPassword(input.password);
     return this.transaction(async (db) => {

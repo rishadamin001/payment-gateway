@@ -9,10 +9,7 @@ export function setupDocumentation(app: INestApplication) {
     res.setHeader('Cache-Control', 'no-store');
     res.json(openApiDocument);
   });
-  server.use(
-    '/docs',
-    swaggerUi.serve,
-    swaggerUi.setup(openApiDocument, {
+  const html = swaggerUi.generateHTML(openApiDocument, {
       customSiteTitle: 'PayBD Demo API — no real money',
       swaggerOptions: {
         supportedSubmitMethods: ['get'],
@@ -20,6 +17,9 @@ export function setupDocumentation(app: INestApplication) {
         validatorUrl: null,
         withCredentials: true,
       },
-    }),
-  );
+    }).replace('<head>', '<head><base href="/docs/">');
+  // Handle both slash forms before static middleware. The base keeps assets
+  // correct when a hosting reverse proxy normalizes /docs/ to /docs.
+  server.get('/docs', (_req, res) => res.type('html').send(html));
+  server.use('/docs', swaggerUi.serve);
 }

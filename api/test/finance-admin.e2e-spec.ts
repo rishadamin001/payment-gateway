@@ -28,6 +28,17 @@ let cookie = '',
   settlementId = '';
 const adminEmail = `admin-m7-${randomUUID()}@example.test`;
 const adminPassword = randomBytes(24).toString('hex');
+it('disables first-administrator signup on hosted instances', async () => {
+  const previous = process.env.PAYBD_HOSTED;
+  process.env.PAYBD_HOSTED = '1';
+  try {
+    expect((await adminGet('setup-status', '').expect(200)).body.setup_required).toBe(false);
+    await adminPost('setup', { email: `blocked-${randomUUID()}@example.test`, password: randomBytes(24).toString('hex') }, '').expect(403);
+  } finally {
+    if (previous === undefined) delete process.env.PAYBD_HOSTED;
+    else process.env.PAYBD_HOSTED = previous;
+  }
+});
 const post = (path: string, body: object = {}, session = cookie) =>
   request(app.getHttpServer())
     .post('/v1/merchant/' + path)
