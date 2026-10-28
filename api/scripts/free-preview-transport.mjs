@@ -1,5 +1,6 @@
 // Optional temporary preview transport. Never connects except through the session proxy.
 import { randomUUID } from 'node:crypto';
+import http from 'node:http';
 
 const endpoint = 'wss://service.tunnelmole.com:8083';
 const local = 'http://127.0.0.1:10000';
@@ -23,13 +24,46 @@ function assignedOrigin(hostname) {
   return `https://${hostname.toLowerCase()}`;
 }
 
+// Node fetch rewrites Host to the loopback URL. Use the HTTP client so the
+// application's same-origin checks receive the browser's validated public Host.
+// This helper is exported for a real loopback-server regression test only.
+export function requestLocalPreview(url, init = {}) {
+  const target = new URL(url);
+  if (target.protocol !== 'http:' || target.hostname !== '127.0.0.1' || target.username || target.password) {
+    return Promise.reject(new Error('Invalid local preview target.'));
+  }
+  return new Promise((resolve, reject) => {
+    const request = http.request(target, { method: init.method, headers: init.headers, signal: init.signal, agent: false }, response => {
+      const chunks = []; let length = 0;
+      response.on('data', chunk => {
+        length += chunk.length;
+        if (length > responseLimit) {
+          response.destroy(new Error('Preview response is too large.'));
+          return;
+        }
+        chunks.push(chunk);
+      });
+      response.on('error', reject);
+      response.on('aborted', () => reject(new Error('Preview response was interrupted.')));
+      response.on('end', () => {
+        const headers = new Headers();
+        for (let index = 0; index < response.rawHeaders.length; index += 2) headers.append(response.rawHeaders[index], response.rawHeaders[index + 1]);
+        const noBody = init.method === 'HEAD' || [204, 205, 304].includes(response.statusCode);
+        resolve(new Response(noBody ? null : Buffer.concat(chunks), { status: response.statusCode, headers }));
+      });
+    });
+    request.on('error', reject);
+    request.end(init.body);
+  });
+}
+
 /** Resolves after assignment and onHostname(origin) readiness. close() stops only this tunnel.
  * Dependency injection is for local tests; production always uses the fixed service/target.
  */
 export async function openFreePreviewTunnel({
   onHostname = async () => {}, timeoutMs = 30000,
   proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY,
-  WebSocketClass, AgentClass, fetchImpl = globalThis.fetch,
+  WebSocketClass, AgentClass, fetchImpl = requestLocalPreview,
 } = {}) {
   if (!proxyUrl) throw new Error('The preview requires the configured HTTPS proxy; direct connections are disabled.');
   if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 180000) throw new Error('Invalid preview startup timeout.');
@@ -112,8 +146,9 @@ export async function openFreePreviewTunnel({
           }
         }
         const responseHeaders = cleanHeaders(Object.fromEntries(response.headers.entries()));
-        // Fetch expands compressed bodies, so their original encoding/length no longer applies.
-        delete responseHeaders['content-encoding'];
+        // Injected fetch adapters may expand compressed bodies. The real HTTP
+        // transport retains exact wire bytes and their content encoding.
+        if (fetchImpl !== requestLocalPreview) delete responseHeaders['content-encoding'];
         const cookies = response.headers.getSetCookie?.() ?? [];
         if (cookies.length) responseHeaders['set-cookie'] = cookies;
         reply(message, response.status, responseHeaders, Buffer.concat(chunks));

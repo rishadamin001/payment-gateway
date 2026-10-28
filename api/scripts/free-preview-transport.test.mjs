@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { openFreePreviewTunnel } from './free-preview-transport.mjs';
+import { createServer } from 'node:http';
+import { gzipSync } from 'node:zlib';
+import { requestLocalPreview, openFreePreviewTunnel } from './free-preview-transport.mjs';
 
 class FakeSocket extends EventEmitter {
   static instance;
@@ -108,4 +110,55 @@ test('rejects duplicate Host headers and replaces forwarding metadata while pres
   assert.equal(forwarded['x-forwarded-for'], undefined);
   assert.equal(forwarded.forwarded, undefined);
   tunnel.close();
+});
+
+test('real HTTP transport retains public Host, Origin, cookies and binary downloads without following redirects', async () => {
+  const pdf = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0, 0xff]);
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0xff]);
+  const compressed = gzipSync(pdf);
+  const observed = [];
+  const server = createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    observed.push({ host: req.headers.host, origin: req.headers.origin, cookie: req.headers.cookie, body: Buffer.concat(chunks).toString() });
+    res.setHeader('Set-Cookie', ['first=fixture; Secure; HttpOnly', 'second=fixture; Secure; HttpOnly']);
+    if (req.url === '/redirect') { res.writeHead(302, { Location: 'https://example.test/never-follow' }); res.end(); }
+    else if (req.url === '/image') { res.writeHead(200, { 'Content-Type': 'image/png' }); res.end(png); }
+    else if (req.url === '/gzip') { res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Encoding': 'gzip' }); res.end(compressed); }
+    else { res.writeHead(200, { 'Content-Type': 'application/pdf' }); res.end(pdf); }
+  });
+  await new Promise(done => server.listen(0, '127.0.0.1', done));
+  const target = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const headers = { Host: 'classroom.tunnelmole.net', Origin: 'https://classroom.tunnelmole.net', Cookie: 'session=fixture' };
+    const response = await requestLocalPreview(target + '/pdf', { method: 'POST', headers, body: Buffer.from('fictional-purchase') });
+    assert.deepEqual(observed[0], { host: headers.Host, origin: headers.Origin, cookie: headers.Cookie, body: 'fictional-purchase' });
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), pdf);
+    assert.deepEqual(response.headers.getSetCookie(), ['first=fixture; Secure; HttpOnly', 'second=fixture; Secure; HttpOnly']);
+    assert.deepEqual(Buffer.from(await (await requestLocalPreview(target + '/image', { method: 'GET', headers })).arrayBuffer()), png);
+    const gzip = await requestLocalPreview(target + '/gzip', { method: 'GET', headers });
+    assert.equal(gzip.headers.get('content-encoding'), 'gzip');
+    assert.deepEqual(Buffer.from(await gzip.arrayBuffer()), compressed);
+    const redirect = await requestLocalPreview(target + '/redirect', { method: 'GET', headers });
+    assert.equal(redirect.status, 302);
+    assert.equal(redirect.headers.get('location'), 'https://example.test/never-follow');
+    assert.equal(observed.length, 4);
+    await assert.rejects(requestLocalPreview('http://example.test/'), /Invalid local preview target/);
+  } finally { await new Promise(done => server.close(done)); }
+});
+
+test('real HTTP transport caps response bytes and honors cancellation', async () => {
+  const server = createServer((req, res) => {
+    if (req.url === '/large') res.end(Buffer.alloc(17 * 1024 * 1024));
+    // The cancelled request deliberately remains pending.
+  });
+  await new Promise(done => server.listen(0, '127.0.0.1', done));
+  const target = `http://127.0.0.1:${server.address().port}`;
+  try {
+    await assert.rejects(requestLocalPreview(target + '/large', { method: 'GET' }), /too large|interrupted/);
+    const controller = new AbortController();
+    const pending = requestLocalPreview(target + '/pending', { method: 'GET', signal: controller.signal });
+    controller.abort();
+    await assert.rejects(pending, { name: 'AbortError' });
+  } finally { server.closeAllConnections(); await new Promise(done => server.close(done)); }
 });
