@@ -8,9 +8,9 @@ Install Node.js 24 and keep your existing PostgreSQL database running. Extract i
 
 ## Explore
 
-For an online classroom demo, use the prepared [Render deployment guide](docs/DEPLOY_RENDER.md)
-and `render.yaml` on branch `deployment/render`. Public deployment still requires
-the owner's hosting-account connection and review of the provider's charges.
+For a zero-cost temporary public demo, use [Free preview](docs/FREE_PREVIEW.md)
+and `npm run preview:free`. It needs relay access through the cloud network policy
+and lasts while the app/workspace runs. No public URL is active until verified.
 
 | Page on local port 3001 | Features |
 | --- | --- |

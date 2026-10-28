@@ -110,6 +110,7 @@ async function main() {
   const api = resolve(root, 'api');
   const web = resolve(root, 'web');
   if (verify) await run(process.execPath, ['--test', 'scripts/hosted-config.test.mjs']);
+  if (verify) await run(process.execPath, ['--test', 'api/scripts/free-preview-transport.test.mjs']);
   await run(process.execPath, ['db/migrate.mjs'], api);
   await run(process.execPath, ['db/seed-m1.mjs'], api);
   await run(npm, ['run', 'build'], api);

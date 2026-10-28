@@ -1,11 +1,11 @@
-# Review Render's displayed recurring cost before creating these resources.
+# Free plans only. Do not accept an upgrade or add paid resources for this demo.
 # This creates a separate hosted demo database; it never connects to Windows PostgreSQL.
 services:
   - type: web
     name: paybd-demo
     runtime: node
-    plan: starter
-    branch: deployment/render
+    plan: free
+    branch: deployment/free-preview
     buildCommand: npm run setup && npm run build
     startCommand: node scripts/hosted.mjs
     healthCheckPath: /health
@@ -31,6 +31,6 @@ databases:
   - name: paybd-demo-db
     databaseName: payment_gateway
     user: paybd
-    plan: basic-256mb
+    plan: free
     postgresMajorVersion: "18"
     ipAllowList: []

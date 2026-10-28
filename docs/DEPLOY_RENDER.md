@@ -1,4 +1,8 @@
-# Put PayBD Demo online with Render
+# Optional free-plan Render deployment
+
+The budget is zero. Prefer [the free temporary preview](FREE_PREVIEW.md) when
+sharing the existing cloud demo. This branch's template now selects only free
+plans. Do not deploy the earlier paid template or accept a payment/upgrade prompt.
 
 Recommended layout: **one Node.js web service + one managed PostgreSQL database**.
 The website, API and Swagger share one HTTPS address. NestJS and its local webhook
@@ -9,11 +13,12 @@ Everything remains DEMO MODE. No real providers, banks, money, email or SMS.
 
 1. Sign in to [Render](https://dashboard.render.com/) with your GitHub account.
 2. Choose **New → Blueprint**, connect `rishadamin001/payment-gateway`, and select
-   branch **deployment/render**. Render reads the included `render.yaml`.
+   branch **deployment/free-preview**. Render reads the included `render.yaml`.
 3. Enter `PAYBD_ADMIN_EMAIL` and a new demo-only `PAYBD_ADMIN_PASSWORD` (12–128
    characters) in Render's secure fields. **Review Render's current recurring
-   charges before confirming deployment.** The template selects a Starter web
-   service and Basic 256 MB PostgreSQL. No purchase has been made by Codex.
+   price before confirming deployment; it must be zero.** The template selects
+   free web and PostgreSQL plans. Do not proceed if these are unavailable or cost
+   money. No purchase has been made by Codex.
 4. Wait for a successful deployment and open the web service's HTTPS URL. Send
    only that public URL back for remote verification; never send credentials.
 
