@@ -101,7 +101,7 @@ export class CheckoutService {
       await client.query(`UPDATE public.checkout_challenges SET superseded_at = clock_timestamp()
         WHERE payment_id = $1 AND superseded_at IS NULL AND completed_at IS NULL`, [id]);
       const result = await client.query<{ id: string; expires_at: Date }>(`INSERT INTO public.checkout_challenges
-        (payment_id, method, expires_at) VALUES ($1, $2, LEAST($3::timestamptz, clock_timestamp() + interval '2 minutes'))
+        (payment_id, method, expires_at) VALUES ($1, $2, LEAST($3::timestamptz, clock_timestamp() + interval '60 seconds'))
         RETURNING id, expires_at`, [id, input.method, payment.expires_at]);
       return { challenge_id: result.rows[0].id, method: input.method, fake_code: '000000',
         expires_at: result.rows[0].expires_at, notice: DEMO_NOTICE, test_mode: true };
@@ -110,9 +110,12 @@ export class CheckoutService {
 
   async confirm(id: string, body: unknown) {
     const input = object(body, ['challenge_id', 'code', 'outcome']);
+    // Customer checkout uses a server-selected approval. Explicit outcomes remain
+    // available to the optional classroom scenario tools and older API clients.
+    const outcome = input.outcome === undefined ? 'success' : input.outcome;
     if (!uuid(input.challenge_id) || typeof input.code !== 'string' || !/^\d{6}$/.test(input.code) ||
-        !['success', 'failure'].includes(String(input.outcome))) {
-      throw new BadRequestException('Provide a challenge ID, six-digit fake code, and success or failure outcome');
+        (typeof outcome !== 'string' || !['success', 'failure'].includes(outcome))) {
+      throw new BadRequestException('Provide a challenge ID and six-digit fake code; an optional outcome must be success or failure');
     }
     return this.transaction(async client => {
       const payment = await this.lock(client, id);
@@ -122,7 +125,7 @@ export class CheckoutService {
       const challenge = result.rows[0];
       if (!challenge || challenge.superseded_at) return new ConflictException('This fake verification step is no longer active');
       if (challenge.completed_at) {
-        if (challenge.completed_outcome !== input.outcome || input.code !== '000000') {
+        if (challenge.completed_outcome !== outcome || input.code !== '000000') {
           return new ConflictException('This fake verification already completed with another result');
         }
         return this.present(client, payment);
@@ -137,10 +140,10 @@ export class CheckoutService {
         await client.query('UPDATE public.checkout_challenges SET attempts = attempts + 1 WHERE id = $1', [challenge.id]);
         return new BadRequestException('Use the displayed fake code 000000. Do not enter a real OTP');
       }
-      const status = input.outcome === 'success' ? 'PAID' : 'FAILED';
+      const status = outcome === 'success' ? 'PAID' : 'FAILED';
       await client.query('UPDATE public.payments SET status = $1 WHERE id = $2', [status, id]);
       await client.query(`UPDATE public.checkout_challenges
-        SET completed_at = clock_timestamp(), completed_outcome = $1 WHERE id = $2`, [input.outcome, challenge.id]);
+        SET completed_at = clock_timestamp(), completed_outcome = $1 WHERE id = $2`, [outcome, challenge.id]);
       payment.status = status;
       return this.present(client, payment);
     });

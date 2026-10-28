@@ -224,7 +224,7 @@ export class BillingService {
         .digest('hex');
       const p = await db.query<{ id: string; status: string }>(
         `INSERT INTO payments(merchant_id,merchant_order_id,amount_paisa,currency,status,success_url,cancel_url,idempotency_key,request_fingerprint,payment_link_id,expires_at)
-        VALUES($1,$2,$3,'BDT','PENDING',$4,$4,$5,$6,$7,LEAST($8::timestamptz,clock_timestamp()+interval '30 minutes')) RETURNING id,status`,
+        VALUES($1,$2,$3,'BDT','PENDING',$4,$4,$5,$6,$7,LEAST($8::timestamptz,clock_timestamp()+interval '2 minutes')) RETURNING id,status`,
         [
           link.merchant_id,
           `LINK-${id.slice(0, 8)}-${randomUUID().slice(0, 8)}`,

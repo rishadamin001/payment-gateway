@@ -23,6 +23,8 @@ and lasts while the app/workspace runs. No public URL is active until verified.
 | /admin | Separate login, merchant approval/suspension, risk and audit |
 | /architecture | System design and demo boundaries |
 
+The shop includes product photos, animated cart feedback, a direct **Merchant dashboard** button and method-specific checkout transitions. New payments allow two minutes; the fake OTP step allows 60 seconds. See [the shop and checkout update](docs/SHOP_CHECKOUT_UPGRADE.md).
+
 Create your merchant account and click **Load fictional examples**. This adds sample data once without replacing records. Admin setup asks you to choose a separate password on first use. There are no preset passwords or live keys. Swagger is on API port 3000 at `/docs`; its OpenAPI document is `/openapi.json`.
 
 ## Develop and verify

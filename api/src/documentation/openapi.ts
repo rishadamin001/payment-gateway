@@ -637,9 +637,9 @@ add(
           description:
             'Use displayed practice code000000. Never use a real OTP.',
         },
-        outcome: { type: 'string', enum: ['success', 'failure'] },
+        outcome: { type: 'string', enum: ['success', 'failure'], default: 'success', description: 'Optional classroom scenario override. Customer checkout omits this field; the simulator approves a valid practice code.' },
       },
-      ['challenge_id', 'code', 'outcome'],
+      ['challenge_id', 'code'],
       true,
     ),
     output: ref('Checkout'),

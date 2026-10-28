@@ -80,6 +80,66 @@ describe('Hosted checkout: public capability, fake verification, and final outco
     expect(response.body).toMatchObject({ id, status: 'PENDING', amount_paisa: 10235, test_mode: true, notice: 'DEMO MODE: no real money' });
     for (const field of ['email', 'key_hash', 'request_fingerprint', 'success_url', 'cancel_url']) expect(response.body).not.toHaveProperty(field);
   });
+  it('gives new payment requests two minutes and new fake OTP challenges one minute', async () => {
+    const id = await createPayment();
+    const payment = (await checkout(id).expect(200)).body;
+    const remaining = Date.parse(payment.expires_at) - Date.parse(payment.server_time);
+    expect(remaining).toBeGreaterThan(100000);
+    expect(remaining).toBeLessThanOrEqual(120000);
+    const challenge = await action(id, 'challenge', { method: 'card' });
+    success(challenge);
+    const stored = await db.query(`SELECT extract(epoch FROM expires_at-created_at)::float8 AS seconds
+      FROM public.checkout_challenges WHERE id=$1`, [challenge.body.challenge_id]);
+    expect(stored.rows[0].seconds).toBeGreaterThan(59);
+    expect(stored.rows[0].seconds).toBeLessThan(61);
+    expect(Date.parse(challenge.body.expires_at)).toBeLessThanOrEqual(Date.parse(payment.expires_at));
+  });
+  it('also limits newly started payment-link checkout to two minutes', async () => {
+    const link = await db.query(`INSERT INTO public.payment_links(merchant_id,title,amount_paisa,reusable,expires_at)
+      VALUES($1,'Short classroom checkout',10000,true,clock_timestamp()+interval '1 hour') RETURNING id`, [merchantIds[0]]);
+    const created = await request(app.getHttpServer()).post(`/v1/pay/${link.rows[0].id}/checkout`)
+      .set('Idempotency-Key', randomUUID()).send({}).expect(201);
+    const payment = (await checkout(created.body.id).expect(200)).body;
+    const remaining = Date.parse(payment.expires_at) - Date.parse(payment.server_time);
+    expect(remaining).toBeGreaterThan(100000);
+    expect(remaining).toBeLessThanOrEqual(120000);
+  });
+  it('uses the server default outcome and safely replays concurrent confirmation without a customer outcome field', async () => {
+    const id = await createPayment();
+    const challenge = await action(id, 'challenge', { method: 'nagad' });
+    const body = { challenge_id: challenge.body.challenge_id, code: '000000' };
+    const confirmations = await Promise.all(Array.from({ length: 8 }, () => action(id, 'confirm', body)));
+    for (const response of confirmations) {
+      success(response);
+      expect(response.body.status).toBe('PAID');
+    }
+    expect(await history(id)).toEqual(['PENDING', 'PAID']);
+    success(await action(id, 'confirm', { ...body, outcome: 'success' }));
+    await action(id, 'confirm', { ...body, outcome: 'failure' }).expect(409);
+  });
+  it.each([null, '', 'random', 1, false])('rejects an explicit invalid optional outcome %j', async outcome => {
+    const id = await createPayment();
+    const challenge = await action(id, 'challenge', { method: 'rocket' });
+    await action(id, 'confirm', { challenge_id: challenge.body.challenge_id, code: '000000', outcome }).expect(400);
+    expect((await checkout(id)).body.status).toBe('PENDING');
+  });
+  it('preserves existing payment deadlines when the additive window migration is reapplied', async () => {
+    const id = await createPayment();
+    const before = (await checkout(id).expect(200)).body.expires_at;
+    await db.query(await readFile(resolve('db/migrations/011_checkout_session_windows.sql'), 'utf8'));
+    expect((await checkout(id).expect(200)).body.expires_at).toBe(before);
+    expect(await history(id)).toEqual(['PENDING']);
+  });
+  it('persists elapsed payment expiry when a default-outcome confirmation first discovers it', async () => {
+    const id = await expiredPayment();
+    const challenge = await db.query(`INSERT INTO public.checkout_challenges(payment_id,method,expires_at)
+      VALUES($1,'card',clock_timestamp()+interval '60 seconds') RETURNING id`, [id]);
+    await action(id, 'confirm', { challenge_id: challenge.rows[0].id, code: '000000' }).expect(409);
+    expect((await checkout(id).expect(200)).body.status).toBe('EXPIRED');
+    expect(await history(id)).toEqual(['PENDING', 'EXPIRED']);
+    const row = await db.query('SELECT completed_at,completed_outcome FROM public.checkout_challenges WHERE id=$1', [challenge.rows[0].id]);
+    expect(row.rows[0]).toEqual({ completed_at: null, completed_outcome: null });
+  });
   it('rejects malformed and unknown checkout references', async () => {
     await checkout('bad-id').expect(400);
     await checkout(randomUUID()).expect(404);

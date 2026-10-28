@@ -2,7 +2,7 @@
 
 Keep the launcher running. Use fictional details and practice OTP **000000**.
 
-- [ ] Shop: add/remove products and change quantities. Pay with Card, bKash, Nagad, Rocket and Bank. Try success, failure, cancel and expiry; inspect database-backed receipts.
+- [ ] Shop: inspect all six product photos, add a product and see its Added button/cart notification, then remove products and change quantities. Pay with Card, bKash, Nagad, Rocket and Bank. Confirm normally for success. Use collapsed Classroom testing tools for a decline; cancel or wait two minutes for expiry. Watch each processing/result screen; inspect database-backed receipts.
 - [ ] Merchant: create an account, load fictional examples, sign out/in. Reload examples to confirm no duplicate batch. Inspect charts, search, status/date filters and CSV export.
 - [ ] Keys: generate a test key, copy from the one-time masked field, dismiss and revoke it. Live mode stays disabled. Keep keys off the projector.
 - [ ] Payments: create a successful payment, open its timeline, issue a partial refund and then a full remaining refund. Inspect both histories.

@@ -5,7 +5,7 @@ Before class, run start-demo.bat, create merchant/admin accounts and load fictio
 | Time | Demonstration |
 | --- | --- |
 | 0:00–0:40 | Explain the merchant problem and state clearly: fake money, no real providers. |
-| 0:40–1:40 | Shop cart → bKash → fake OTP 000000 → success. Mention other methods and failure/cancel/expiry controls. |
+| 0:40–1:40 | Shop cart → bKash → fake OTP 000000 → success. Point out cart feedback, product photos and Merchant dashboard access. Mention the optional Classroom testing tools for decline/expiry, plus Cancel payment. |
 | 1:40–2:40 | Merchant charts, filters, CSV and timeline. Explain hashed passwords, separate sessions, test keys and idempotency. |
 | 2:40–3:30 | Partial then remaining refund; inspect histories and explain atomic over-refund protection. |
 | 3:30–4:15 | Signed webhook attempts and retries; show a delivered event and explain persisted outbox events. |
