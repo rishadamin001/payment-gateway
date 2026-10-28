@@ -102,3 +102,6 @@ proxy's certificate, and an isolated Firefox test browser could not launch with 
 new profile. TLS verification was kept enabled; existing browser trust/data was
 not changed. The earlier local HTTPS browser checks are separate evidence. Native
 Windows verification and the environment snapshot Publish failure remain outstanding.
+
+The latest shop/cart/checkout visual update and its separate verification record
+are documented in [SHOP_CHECKOUT_UPGRADE.md](SHOP_CHECKOUT_UPGRADE.md).

@@ -6,7 +6,7 @@
 - PAID: the customer's payment was confirmed. This is final, apart from refunds.
 - FAILED: the payment was declined or an error occurred. The customer may try again with a new payment.
 - CANCELLED: the customer clicked cancel on the checkout page.
-- EXPIRED: the customer never finished paying within the time limit (for example 30 minutes).
+- EXPIRED: the customer never finished paying within the time limit (2 minutes for new demo requests; existing request deadlines are preserved).
 - REFUNDED: all of the money was returned to the customer.
 - PARTIALLY_REFUNDED: some of the money was returned.
 
