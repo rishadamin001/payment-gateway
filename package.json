@@ -9,6 +9,7 @@
     "test": "npm --prefix api test",
     "verify": "node scripts/dev.mjs --verify",
     "demo": "node scripts/dev.mjs",
-    "demo:production": "node scripts/dev.mjs --production"
+    "demo:production": "node scripts/dev.mjs --production",
+    "preview:free": "npm run build && node scripts/free-preview.mjs"
   }
 }
